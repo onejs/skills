@@ -1,0 +1,17 @@
+{
+  "name": "onestack-plugins",
+  "owner": {
+    "name": "One Team",
+    "email": "support@onestack.dev"
+  },
+  "metadata": {
+    "description": "Official One framework plugins for Claude Code"
+  },
+  "plugins": [
+    {
+      "name": "one",
+      "source": "./plugins/one",
+      "description": "Official One framework skills for building full-stack React apps targeting web and native."
+    }
+  ]
+}
