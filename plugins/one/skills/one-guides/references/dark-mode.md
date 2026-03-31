@@ -1,5 +1,7 @@
 # Dark Mode
 
+Official docs: [Dark Mode](https://onestack.dev/docs/guides-dark-mode)
+
 SSR-safe dark mode with `@vxrn/color-scheme` and Tamagui.
 
 ## Setup

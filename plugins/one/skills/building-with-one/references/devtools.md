@@ -1,5 +1,7 @@
 # Dev Tools
 
+Official docs: [Dev Tools](https://onestack.dev/docs/dev-tools)
+
 One includes built-in development tools. Open with **Alt+Space** (Option+Space on Mac).
 
 ## Keyboard Shortcuts

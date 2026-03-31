@@ -1,5 +1,7 @@
 # Tamagui
 
+Official docs: [Tamagui Guide](https://onestack.dev/docs/guides-tamagui), [Dark Mode](https://onestack.dev/docs/guides-dark-mode)
+
 SSR-safe cross-platform styling with Tamagui and One.
 
 ## Setup

@@ -1,5 +1,7 @@
 # Configuration
 
+Official docs: [Configuration](https://onestack.dev/docs/configuration)
+
 All One configuration goes through the Vite plugin in `vite.config.ts`:
 
 ```ts

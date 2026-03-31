@@ -7,6 +7,8 @@ license: MIT
 
 # Render Modes
 
+Official docs: [Routing](https://onestack.dev/docs/routing), [Configuration](https://onestack.dev/docs/configuration)
+
 One lets you set the render mode globally or per-page. Mix modes freely — a single app can have SSG marketing pages, SSR dashboards, SPA admin panels, and API endpoints.
 
 ## Quick Reference

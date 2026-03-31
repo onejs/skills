@@ -1,5 +1,7 @@
 # Layouts
 
+Official docs: [Layouts](https://onestack.dev/docs/routing-layouts), [withLayoutContext](https://onestack.dev/docs/exports-withLayoutContext)
+
 Layout files named `_layout.tsx` wrap child routes. They nest when placed in subdirectories.
 
 ## Layout Types

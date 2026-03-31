@@ -1,5 +1,7 @@
 # MDX
 
+Official docs: [MDX Guide](https://onestack.dev/docs/guides-mdx)
+
 ## Setup
 
 ```bash

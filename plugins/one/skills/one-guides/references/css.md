@@ -1,5 +1,7 @@
 # CSS Loading
 
+Official docs: [Configuration](https://onestack.dev/docs/configuration), [Features](https://onestack.dev/docs/features)
+
 ## Automatic Optimization
 
 One separates CSS into two categories in production:

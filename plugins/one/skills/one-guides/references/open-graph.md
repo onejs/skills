@@ -1,5 +1,7 @@
 # Dynamic OpenGraph Images
 
+Official docs: [OpenGraph Guide](https://onestack.dev/docs/guides-open-graph)
+
 Generate social sharing preview images with API routes and `@vercel/og`.
 
 ## Setup

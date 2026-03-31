@@ -1,5 +1,7 @@
 # Render Modes
 
+Official docs: [Routing](https://onestack.dev/docs/routing), [Configuration](https://onestack.dev/docs/configuration)
+
 One supports four render modes, configurable globally or per-page.
 
 ## Modes

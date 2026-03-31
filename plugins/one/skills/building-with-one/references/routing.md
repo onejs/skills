@@ -1,5 +1,7 @@
 # Routing
 
+Official docs: [Routing](https://onestack.dev/docs/routing)
+
 One uses file system routing in the `app/` directory. Every file becomes a route unless it starts with `_` (layout/middleware).
 
 ## File Conventions

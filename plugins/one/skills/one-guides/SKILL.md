@@ -7,6 +7,8 @@ license: MIT
 
 # One Framework Guides
 
+Official docs: [Guides Index](https://onestack.dev/docs/guides)
+
 Recipes and patterns for common tasks when building with One.
 
 ## References

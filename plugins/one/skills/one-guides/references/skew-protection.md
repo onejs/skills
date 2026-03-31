@@ -1,5 +1,7 @@
 # Skew Protection
 
+Official docs: [Configuration](https://onestack.dev/docs/configuration)
+
 Handles stale client bundles after deployments.
 
 ## The Problem

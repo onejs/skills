@@ -1,5 +1,7 @@
 # Authentication
 
+Official docs: [FAQ](https://onestack.dev/docs/faq), [Middlewares](https://onestack.dev/docs/routing-middlewares), [Loaders](https://onestack.dev/docs/routing-loader)
+
 ## Approaches
 
 | Approach | Best For |

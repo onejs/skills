@@ -1,5 +1,7 @@
 # Hooks
 
+Official docs: [Hooks Overview](https://onestack.dev/docs/hooks-useRouter), [useRouter](https://onestack.dev/docs/hooks-useRouter), [useNavigation](https://onestack.dev/docs/hooks-useNavigation), [useParams](https://onestack.dev/docs/hooks-useParams), [Loaders](https://onestack.dev/docs/routing-loader)
+
 All hooks are imported from `'one'`.
 
 ## useRouter

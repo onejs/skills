@@ -1,5 +1,7 @@
 # Middleware
 
+Official docs: [Middlewares](https://onestack.dev/docs/routing-middlewares)
+
 Middlewares intercept requests before they reach routes. Place `_middleware.ts` files in any `app/` directory.
 
 ## Basic Usage

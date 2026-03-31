@@ -7,6 +7,8 @@ license: MIT
 
 # Deployment
 
+Official docs: [one build](https://onestack.dev/docs/one-build), [one serve](https://onestack.dev/docs/one-serve), [Configuration](https://onestack.dev/docs/configuration), [FAQ](https://onestack.dev/docs/faq)
+
 ## Build
 
 ```bash

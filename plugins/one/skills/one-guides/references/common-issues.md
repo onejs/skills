@@ -1,5 +1,7 @@
 # Common Issues
 
+Official docs: [Common Issues](https://onestack.dev/docs/common-issues), [FAQ](https://onestack.dev/docs/faq), [Configuration](https://onestack.dev/docs/configuration)
+
 ## SSR Errors
 
 If server rendering fails, try bundling all dependencies:

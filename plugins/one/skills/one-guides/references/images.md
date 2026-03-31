@@ -1,5 +1,7 @@
 # Images
 
+Official docs: [Features](https://onestack.dev/docs/features), [MDX Guide](https://onestack.dev/docs/guides-mdx)
+
 ## `?imagedata` Imports
 
 Import images with automatic dimensions and blur placeholders at build time:

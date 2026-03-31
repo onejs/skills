@@ -1,5 +1,7 @@
 # Incremental Static Regeneration (ISR)
 
+Official docs: [ISR Guide](https://onestack.dev/docs/guides-isr)
+
 Cache SSR pages at the CDN edge for static-like performance.
 
 ## How It Works

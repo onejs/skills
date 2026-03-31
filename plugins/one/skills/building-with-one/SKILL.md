@@ -7,6 +7,8 @@ license: MIT
 
 # One Framework Guide
 
+Official docs: [Introduction](https://onestack.dev/docs/introduction), [Installation](https://onestack.dev/docs/installation), [Configuration](https://onestack.dev/docs/configuration)
+
 One is a full-stack React framework targeting both web and React Native with a single codebase. Built on Vite with file system routing, server-side loaders, and flexible render modes (SSG, SSR, SPA). For native builds, One supports Metro (recommended) and an experimental Vite bundler.
 
 ## References

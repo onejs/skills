@@ -7,6 +7,8 @@ license: MIT
 
 # API Routes
 
+Official docs: [Routing](https://onestack.dev/docs/routing)
+
 API routes are server-only HTTP endpoints. Name files with the `+api.ts` suffix.
 
 ## When to Use

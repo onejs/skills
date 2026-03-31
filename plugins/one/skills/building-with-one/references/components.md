@@ -1,5 +1,7 @@
 # Components
 
+Official docs: [Layouts](https://onestack.dev/docs/routing-layouts), [Stack](https://onestack.dev/docs/components-Stack), [Tabs](https://onestack.dev/docs/components-Tabs), [Drawer](https://onestack.dev/docs/components-Drawer), [SafeAreaView](https://onestack.dev/docs/components-SafeAreaView), [withLayoutContext](https://onestack.dev/docs/exports-withLayoutContext)
+
 ## Stack
 
 Native stack navigator. Use in `_layout.tsx`:

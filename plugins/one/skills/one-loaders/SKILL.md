@@ -7,6 +7,8 @@ license: MIT
 
 # Loaders
 
+Official docs: [Loaders](https://onestack.dev/docs/routing-loader)
+
 Loaders are server-side data fetching functions that run before rendering. They are tree-shaken from the client bundle — database queries, API keys, and server logic never reach the browser.
 
 ## When to Use

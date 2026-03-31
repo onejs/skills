@@ -1,5 +1,7 @@
 # Native Builds
 
+Official docs: [one dev](https://onestack.dev/docs/one-dev), [iOS Native Guide](https://onestack.dev/docs/guides-ios-native), [EAS Guide](https://onestack.dev/docs/guides-eas), [Metro Mode](https://onestack.dev/docs/metro-mode)
+
 ## Quick Development (Expo Go)
 
 No build needed — install Expo Go on your device:
