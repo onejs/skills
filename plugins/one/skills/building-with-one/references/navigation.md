@@ -11,26 +11,63 @@ import { Link } from 'one'
 <Link href="/about">About</Link>
 
 // dynamic route
-<Link href={`/blog/${post.slug}`}>
-  {post.title}
-</Link>
+<Link href={`/blog/${post.slug}`}>{post.title}</Link>
 
 // replace instead of push
-<Link href="/login" replace>
-  Login
-</Link>
+<Link href="/login" replace>Login</Link>
 
 // wrap a custom component
 <Link href="/settings" asChild>
-  <Pressable>
-    <Text>Settings</Text>
-  </Pressable>
+  <Pressable><Text>Settings</Text></Pressable>
+</Link>
+
+// open in new tab (web)
+<Link href="https://example.com" target="_blank">External</Link>
+
+// download file (web)
+<Link href="/report.pdf" download="report.pdf">Download</Link>
+```
+
+### Route Masking (web only)
+
+Display a different URL in the browser while navigating to a specific route:
+
+```tsx
+<Link href="/photos/5/modal" mask="/photos/5">
+  View Photo
 </Link>
 ```
 
+When the user navigates back/forward, the actual route is restored from history.
+
+### Scroll Control
+
+Disable scroll-to-top for individual navigations:
+
+```tsx
+<Link href="/next" scroll={false}>
+  Navigate without scrolling
+</Link>
+```
+
+### Link Props
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `href` | `Href` | Destination path (typed from file system routes) |
+| `asChild` | `boolean` | Forward props to child component |
+| `replace` | `boolean` | Replace instead of push |
+| `push` | `boolean` | Force push |
+| `mask` | `Href` | Display different URL in browser (web only) |
+| `scroll` | `boolean` | Control scroll behavior |
+| `target` | `string` | Where to open (`'_blank'`, etc.) — web only |
+| `rel` | `string` | Link relationship — web only |
+| `download` | `string` | Download filename — web only |
+| `className` | `string` | HTML class (web) or CSS interop (native) |
+
 ## Link Prefetching
 
-One prefetches links automatically based on the `linkPrefetch` config:
+One prefetches links automatically. Configure strategy:
 
 | Mode | Behavior |
 |------|----------|
@@ -39,167 +76,201 @@ One prefetches links automatically based on the `linkPrefetch` config:
 | `'hover'` | Prefetch on hover |
 | `false` | Disable prefetching |
 
-Configure in `vite.config.ts`:
-
 ```ts
-one({
-  web: {
-    linkPrefetch: 'intent',
-  },
-})
+// vite.config.ts
+one({ web: { linkPrefetch: 'intent' } })
 ```
 
-## Programmatic Navigation
+## useRouter
 
-Use `useRouter()` for imperative navigation:
+Imperative navigation. Returns a static object (never re-renders):
 
 ```tsx
 import { useRouter } from 'one'
 
-function LoginButton() {
-  const router = useRouter()
-
-  async function handleLogin() {
-    await auth.login()
-    router.push('/dashboard')
-  }
-
-  return <Button onPress={handleLogin} title="Login" />
-}
-```
-
-### Router Methods
-
-```tsx
 const router = useRouter()
 
-router.push('/path')         // push onto stack
-router.replace('/path')      // replace current screen
-router.back()                // go back
-router.canGoBack()           // check if back is possible
-router.navigate('/path')     // navigate (smart — push or pop as needed)
+router.push('/path')              // push
+router.replace('/path')           // replace
+router.navigate('/path')          // smart push/pop
+router.back()                     // go back
+router.canGoBack()                // boolean
+
+router.dismiss()                  // dismiss modal
+router.dismissAll()               // dismiss all modals
+router.canDismiss()               // boolean
+
+router.setParams({ key: 'val' })  // update query params
 ```
 
-## Route Params
-
-### Dynamic Params
+### Route Masking with useRouter
 
 ```tsx
-import { useParams } from 'one'
+router.push('/photos/5/modal', {
+  mask: { href: '/photos/5' }
+})
+```
 
-// in app/users/[id].tsx
-function UserPage() {
-  const { id } = useParams<{ id: string }>()
+### Scroll Control with useRouter
+
+```tsx
+router.push('/next', { scroll: false })
+```
+
+### Subscribe to State
+
+```tsx
+const unsub = router.subscribe((state) => {
+  console.log('Route changed:', state)
+})
+```
+
+## useLinkTo
+
+Generate link props for fully custom link components:
+
+```tsx
+import { useLinkTo } from 'one'
+
+const linkProps = useLinkTo({ href: '/profile', replace: true })
+// returns: { href: string, role: 'link', onPress: Function }
+
+<Pressable {...linkProps}>
+  <Text>Profile</Text>
+</Pressable>
+```
+
+## Typed Routes
+
+One auto-generates route types to `app/routes.d.ts`. Use `createRoute` for fully typed params and loaders:
+
+```tsx
+import { createRoute } from 'one'
+
+const route = createRoute<'/docs/[slug]'>()
+
+export const loader = route.createLoader(async ({ params }) => {
+  // params.slug is typed as string
+  return { doc: await fetchDoc(params.slug) }
+})
+
+export default function Page() {
+  const { slug } = route.useParams()  // typed
 }
 ```
 
-### Search Params
+### Auto-Generation
 
-```tsx
-import { useSearchParams } from 'one'
+Enable in config to auto-insert type helpers when route files are created:
 
-function SearchPage() {
-  const [params, setParams] = useSearchParams<{ q: string }>()
-  // params.q contains the query
-  // setParams({ q: 'new query' }) updates URL
-}
+```ts
+one({
+  router: {
+    experimental: {
+      typedRoutesGeneration: 'runtime',  // inserts createRoute
+      // or: 'type' — inserts RouteType only
+    },
+  },
+})
 ```
 
-## Current Route Info
+### Manual Type Usage
 
 ```tsx
-import { usePathname, useSegments } from 'one'
+import type { RouteType } from 'one'
 
-function Breadcrumb() {
-  const pathname = usePathname()    // "/blog/my-post"
-  const segments = useSegments()    // ["blog", "my-post"]
-}
+type Route = RouteType<'/docs/[slug]'>
+// Route['Params'] = { slug: string }
+// Route['LoaderProps'] = { path: string; params: { slug: string }; request?: Request }
+```
+
+### href Helper
+
+Type-check route strings at compile time:
+
+```tsx
+import { href } from 'one'
+
+const link = href('/post/hello-world')  // type error if route doesn't exist
+```
+
+### Regenerate Types
+
+```bash
+one generate-routes                  # types only
+one generate-routes --typed=runtime  # + inject createRoute helpers
+one generate-routes --typed=type     # + inject RouteType helpers
 ```
 
 ## Protected Routes
 
-Gate routes behind authentication:
+Hide routes based on a condition:
 
 ```tsx
-import { Protected, Redirect } from 'one'
+import { Stack, Protected } from 'one'
 
-// in _layout.tsx
-export default function Layout() {
-  const { user } = useAuth()
-
-  return (
-    <Protected
-      isAuthed={!!user}
-      fallback={<Redirect href="/login" />}
-    >
-      <Stack />
+<Stack>
+  <Stack.Screen name="login" />
+  <Protected guard={!!session}>
+    <Stack.Screen name="dashboard" />
+    <Protected guard={isAdmin}>
+      <Stack.Screen name="admin" />
     </Protected>
-  )
-}
+  </Protected>
+</Stack>
 ```
 
-## Navigation Blocking
+Works with Stack, Tabs, Drawer. Routes are completely removed when `guard` is false.
 
-Prevent navigation (unsaved changes warning):
+## Redirect
+
+### Declarative
 
 ```tsx
-import { useBlocker } from 'one'
+import { Redirect } from 'one'
 
-function EditForm() {
-  const [dirty, setDirty] = useState(false)
-
-  useBlocker(dirty, {
-    message: 'You have unsaved changes. Leave anyway?',
-  })
-
-  return <TextInput onChangeText={() => setDirty(true)} />
-}
+if (!user) return <Redirect href="/login" />
 ```
 
-## Redirect Helper
+Fires once per mount.
 
-Redirect from loaders:
+### From Loaders
 
 ```tsx
 import { redirect } from 'one'
 
 export async function loader({ request }) {
   const user = await getUser(request)
-  if (!user) {
-    throw redirect('/login')
-  }
+  if (!user) throw redirect('/login')
   return { user }
 }
 ```
 
-Or declaratively:
-
-```tsx
-import { Redirect } from 'one'
-
-export default function OldPage() {
-  return <Redirect href="/new-page" />
-}
-```
+Both `throw redirect()` and `return redirect()` work. `throw` stops execution immediately. During client-side navigation, the redirect is intercepted before the protected page ever renders — no data leaks.
 
 ## Scroll Behavior
 
-Control scroll restoration:
+One handles scroll restoration automatically:
+
+- New navigation → scroll to top
+- Back/forward → restore saved position
+- Hash in URL → scroll to element
+- Session persistence via sessionStorage
+
+Customize with `<ScrollBehavior />` or `useScrollGroup()` in layouts. See components reference.
+
+## Navigation Blocking
+
+Prevent navigation for unsaved changes:
 
 ```tsx
-import { ScrollBehavior } from 'one'
+import { useBlocker } from 'one'
 
-// in _layout.tsx
-<ScrollBehavior />
-```
+const blocker = useBlocker(hasUnsavedChanges)
 
-Use scroll groups for independent scroll containers:
-
-```tsx
-import { useScrollGroup } from 'one'
-
-function Feed() {
-  const scrollRef = useScrollGroup('feed')
-  return <ScrollView ref={scrollRef}>...</ScrollView>
+if (blocker.state === 'blocked') {
+  // show confirmation dialog
+  blocker.reset()    // stay
+  blocker.proceed()  // leave
 }
 ```

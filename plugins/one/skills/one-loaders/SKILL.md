@@ -1,6 +1,6 @@
 ---
 name: one-loaders
-description: Server-side data loading in One framework. Use when fetching data for pages, implementing caching, redirects, response headers, or file-driven content with loaders.
+description: Server-side data loading in One framework. Use when fetching data for pages, implementing caching, redirects, response headers, ISR, refetching, or file-driven content with loaders.
 version: 1.0.0
 license: MIT
 ---
@@ -12,15 +12,14 @@ Loaders are server-side data fetching functions that run before rendering. They 
 ## When to Use
 
 - Fetching data for a page (database, external API, filesystem)
-- Server-side authentication checks
-- Redirecting unauthenticated users
+- Server-side authentication checks and redirects
 - Setting response headers (caching, cookies)
+- File-driven content (MDX, JSON) with hot reload
 
 ## When NOT to Use
 
 - Client-side interactions (button clicks, form submissions) — use API routes
-- Static data that never changes — hardcode it
-- Real-time data — use client-side fetching or websockets
+- Real-time data — use client-side fetching or websockets after initial load
 
 ## Basic Usage
 
@@ -42,9 +41,9 @@ export default function PostPage() {
 
 ```tsx
 export async function loader({ params, path, request }) {
-  // params  — dynamic route segments ({ slug: 'hello' } for /blog/[slug])
+  // params  — dynamic route segments ({ slug: 'hello' })
   // path    — full pathname ('/blog/hello')
-  // request — Web API Request object (SSR only, undefined in SSG)
+  // request — Web API Request (SSR only, undefined in SSG)
 }
 ```
 
@@ -53,34 +52,93 @@ export async function loader({ params, path, request }) {
 Return any JSON-serializable value:
 
 ```tsx
-// object (most common)
-return { user, posts }
-
-// array
-return posts
-
-// Response object (for custom status/headers)
-return Response.json({ data }, { status: 200 })
+return { user, posts }             // object (most common)
+return posts                       // array
+return Response.json({ data })     // Response object
 ```
+
+## Automatic Refetching
+
+Loaders automatically refetch when:
+- Pathname changes (`/home` → `/about`)
+- Dynamic params change (`/user/1` → `/user/2`)
+- Search params change (`?q=hello` → `?q=world`)
 
 ## useLoader vs useLoaderState
 
-**`useLoader(loader)`** — returns the data directly:
+| Feature | `useLoader` | `useLoaderState` |
+|---------|-------------|------------------|
+| Returns data | `data` | `{ data, refetch, state }` |
+| Manual refetch | No | Yes |
+| Loading state | No | `'idle'` or `'loading'` |
+| Works without loader arg | No | Yes (access from anywhere) |
+
+### useLoaderState
 
 ```tsx
-const data = useLoader(loader)
+import { useLoaderState } from 'one'
+
+// with loader — replaces useLoader
+export default function Page() {
+  const { data, refetch, state } = useLoaderState(loader)
+
+  return (
+    <>
+      {state === 'loading' && <Spinner />}
+      <Content data={data} />
+      <Button onPress={refetch}>Refresh</Button>
+    </>
+  )
+}
 ```
 
-**`useLoaderState(loader)`** — returns data with loading state and refetch:
+### Refetch from Anywhere
+
+All `useLoaderState` hooks on the same route share state. Call `refetch()` from a child component — all subscribers update:
 
 ```tsx
-const { data, isLoading, error, refetch } = useLoaderState(loader)
+// in a header button, sidebar, or any child component
+function RefreshButton() {
+  const { refetch, state } = useLoaderState()
+  return (
+    <Button onPress={refetch} disabled={state === 'loading'}>
+      Refresh
+    </Button>
+  )
+}
+```
 
-// refetch on an interval
+### Common Patterns
+
+**Pull-to-refresh:**
+```tsx
+const { refetch, state } = useLoaderState()
+
+<PullToRefresh onRefresh={refetch} refreshing={state === 'loading'}>
+  {children}
+</PullToRefresh>
+```
+
+**Polling:**
+```tsx
+const { refetch, state } = useLoaderState(loader)
+
 useEffect(() => {
-  const interval = setInterval(() => refetch(), 30000)
+  const interval = setInterval(() => {
+    if (state === 'idle') refetch()
+  }, 5000)
   return () => clearInterval(interval)
-}, [])
+}, [refetch, state])
+```
+
+**Form revalidation:**
+```tsx
+const { refetch } = useLoaderState()
+
+const handleSubmit = async (data) => {
+  await submitForm(data)
+  refetch()  // reload page data after mutation
+}
 ```
 
 ## Redirects
@@ -99,7 +157,11 @@ export async function loader({ request }) {
 }
 ```
 
-## Response Headers
+Both `throw redirect()` and `return redirect()` work. `throw` stops execution immediately.
+
+**How it works during client-side navigation:** The server detects the redirect, transforms it into a JS module with redirect metadata (not a raw 302), and the client intercepts it before rendering — no sensitive data reaches the client.
+
+## Response Headers and Caching
 
 Set caching, cookies, or custom headers:
 
@@ -107,46 +169,58 @@ Set caching, cookies, or custom headers:
 import { setResponseHeaders } from 'one'
 
 export async function loader() {
-  setResponseHeaders(headers => {
-    headers.set('Cache-Control', 'public, max-age=3600, s-maxage=86400')
-    headers.set('Set-Cookie', 'theme=dark; Path=/')
+  await setResponseHeaders((headers) => {
+    headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400')
   })
-
   return fetchData()
 }
 ```
 
+Common cache patterns:
+- `s-maxage=3600` — CDN caches for 1 hour
+- `stale-while-revalidate=86400` — serve stale while revalidating (up to 1 day)
+- `max-age=0, must-revalidate` — always revalidate with origin
+- `private, no-store` — never cache (user-specific data)
+
+Note: `stale-while-revalidate` requires CDN support (Vercel, CloudFront, Fastly). Cloudflare does not currently support it.
+
+### Cookies
+
+```tsx
+await setResponseHeaders((headers) => {
+  headers.append('Set-Cookie', `session=${token}; HttpOnly; Secure; SameSite=Strict; Path=/`)
+})
+```
+
 ## Loader Cache
 
-Deduplicate concurrent SSR calls for the same data:
+Deduplicate concurrent SSR calls:
 
 ```tsx
 export function loaderCache(params, request) {
   return {
     key: `post-${params.slug}`,
-    ttl: 60, // seconds
+    ttl: 60,  // seconds
   }
-}
-
-export async function loader({ params }) {
-  // this only runs once per cache key within the TTL
-  return db.posts.find(params.slug)
 }
 ```
 
-## File Watching
+## File Watching (Hot Reload)
 
-Trigger HMR when a file changes (useful for file-driven content):
+Register a file dependency — when it changes, the loader re-runs and data refreshes without full page reload:
 
 ```tsx
 import { watchFile } from 'one'
+import { readFile } from 'fs/promises'
 
-export async function loader() {
-  watchFile('./content/posts.json')
-  const posts = JSON.parse(await readFile('./content/posts.json', 'utf-8'))
-  return { posts }
+export async function loader({ params }) {
+  const filePath = `./content/${params.slug}.mdx`
+  watchFile(filePath)
+  return { content: await readFile(filePath, 'utf-8') }
 }
 ```
+
+No-op in production and on the client.
 
 ## Route Validation
 
@@ -158,43 +232,29 @@ export function validateParams(params) {
   return { slug: z.string().parse(params.slug) }
 }
 
-// async validation (e.g., check record exists)
+// async validation (check record exists)
 export async function validateRoute({ params }) {
   const exists = await db.posts.exists({ slug: params.slug })
-  if (!exists) return false // renders +not-found
+  if (!exists) return false  // renders +not-found
   return true
 }
 ```
 
 ## Layout Loaders
 
-Layouts can have their own loaders. Child pages access layout data via `useMatches()`:
+Layouts can export loaders. Access layout data from pages via `useMatches()`:
 
 ```tsx
 // app/_layout.tsx
 export async function loader() {
-  const user = await getUser()
-  return { user }
+  return { user: await getUser() }
 }
 
-export default function Layout() {
-  const { user } = useLoader(loader)
-  return (
-    <UserProvider value={user}>
-      <Stack />
-    </UserProvider>
-  )
-}
-```
-
-```tsx
-// app/index.tsx — child page accessing layout data
+// app/index.tsx — child page
 import { useMatches } from 'one'
 
-export default function Home() {
-  const matches = useMatches()
-  const layoutData = matches[0]?.data // parent layout's loader data
-}
+const matches = useMatches()
+const layoutData = matches[0]?.loaderData  // parent layout data
 ```
 
 ## Static Generation with Loaders
@@ -213,39 +273,34 @@ export async function loader({ params }) {
 }
 ```
 
+## Rendering Mode Behavior
+
+- **SSG**: Loader runs at build time, data baked into HTML
+- **SSR**: Loader runs every request, has access to `request` object
+- **SPA**: No server-side loader; `useLoaderState` refetch works client-side
+
 ## Common Mistakes
 
-**Wrong:** Importing server-only code at the top level of a page component.
-
+**Wrong:** Importing server code at the top level of a component file.
 ```tsx
-// BAD — this import leaks to the client
+// BAD — leaks to client
 import { db } from './database'
-
-export default function Page() {
-  // using db here doesn't work client-side
-}
 ```
 
-**Right:** Keep server code inside the loader — it's tree-shaken automatically.
-
+**Right:** Keep server code inside the loader:
 ```tsx
-// GOOD — db import is only in the loader, tree-shaken from client
 export async function loader() {
   const { db } = await import('./database')
   return db.query()
 }
 ```
 
-**Wrong:** Returning non-serializable values.
-
+**Wrong:** Returning non-serializable values:
 ```tsx
-// BAD — functions, Dates, Maps can't serialize
 return { onClick: () => {}, createdAt: new Date() }
 ```
 
-**Right:** Return JSON-serializable data.
-
+**Right:** Return JSON-serializable data:
 ```tsx
-// GOOD
 return { createdAt: new Date().toISOString() }
 ```

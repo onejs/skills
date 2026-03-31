@@ -1,6 +1,6 @@
 ---
 name: one-deployment
-description: Deploy One framework apps to Node servers, Vercel, Cloudflare Workers, or as static sites. Covers build, serve, and platform-specific configuration.
+description: Deploy One framework apps to Node servers, Vercel, Cloudflare Workers, or as static sites. Covers build, serve, cluster mode, security scanning, and platform-specific configuration.
 version: 1.0.0
 license: MIT
 ---
@@ -10,7 +10,7 @@ license: MIT
 ## Build
 
 ```bash
-# build for web
+# build for web (default)
 one build
 
 # build for specific platform
@@ -27,36 +27,63 @@ ONE_SERVER_URL=https://myapp.com one build
 
 Output goes to `dist/` with `client/`, `server/`, and `api/` folders.
 
+### Parallel Builds
+
+One uses worker threads to build static pages across CPU cores. Disable if needed:
+
+```ts
+one({ build: { workers: false } })
+// or: ONE_BUILD_WORKERS=0 npx one build
+```
+
+### Security Scanning
+
+One automatically scans client bundles for leaked secrets (API keys, tokens). Set to `'error'` for production:
+
+```ts
+one({
+  build: {
+    securityScan: 'error',  // 'warn' (default) | 'error' | false
+  },
+})
+```
+
+Detects Anthropic, OpenAI, Stripe, GitHub, AWS keys, bearer tokens, and generic secret patterns.
+
 ## Node (Default)
 
-The simplest deployment. One includes a production Hono server.
-
-### Quick start
+One includes a production Hono server.
 
 ```bash
 one build
 one serve
 ```
 
-### Options
+### Cluster Mode
+
+For high-traffic deployments, use cluster mode to fork workers across CPU cores:
 
 ```bash
-one serve --host 0.0.0.0 --port 3000 --cluster
+one serve --cluster        # use all CPU cores
+one serve --cluster=4      # use 4 workers
 ```
 
-`--cluster` forks one worker per CPU core for better throughput.
+Each worker handles requests independently with automatic restart on crash.
 
-### Deploy anywhere
+**When to use cluster:** 200+ concurrent connections, SSR-heavy workloads, multi-core servers.
 
-The `dist/` directory is self-contained. Deploy to any Node host:
+### Programmatic Usage
 
-```bash
-# Railway, Render, Fly.io, etc.
-one build
-one serve
+```ts
+import { serve } from 'one/serve'
 
-# or use Node directly
-node dist/server/index.js
+await serve({
+  port: 3000,
+  compress: true,
+  cluster: true,
+  loadEnv: true,
+  // app: customHonoApp  // bring your own Hono
+})
 ```
 
 ### Docker
@@ -68,7 +95,7 @@ COPY package.json bun.lockb ./
 RUN npm install --production
 COPY dist/ dist/
 EXPOSE 3000
-CMD ["npx", "one", "serve", "--port", "3000"]
+CMD ["npx", "one", "serve", "--port", "3000", "--cluster"]
 ```
 
 ## Vercel
@@ -76,7 +103,6 @@ CMD ["npx", "one", "serve", "--port", "3000"]
 ### Configuration
 
 ```ts
-// vite.config.ts
 one({
   web: {
     deploy: 'vercel',
@@ -106,8 +132,8 @@ Build generates `.vercel/output/` with static assets and serverless functions.
 
 ### How it works
 
-- SSG pages → static files in `.vercel/output/static/`
-- SSR pages → serverless functions in `.vercel/output/functions/`
+- SSG pages → static files
+- SSR pages → serverless functions
 - API routes → serverless functions
 
 ## Cloudflare Workers
@@ -115,7 +141,6 @@ Build generates `.vercel/output/` with static assets and serverless functions.
 ### Configuration
 
 ```ts
-// vite.config.ts
 one({
   web: {
     deploy: 'cloudflare',
@@ -139,39 +164,43 @@ Build generates `dist/worker.js` and `dist/wrangler.jsonc`.
 - Static assets served from Workers KV or R2
 - SSR/API routes run in the Worker
 
-### wrangler.jsonc
-
-The build auto-generates this. To customize, create your own `wrangler.jsonc` in the project root — One will merge its output config with yours.
+To customize, create `wrangler.jsonc` in the project root — One merges its config with yours.
 
 ## Static Export
 
-For SPA or SSG sites with no server-side loaders:
+For SPA or SSG sites with no server-side loaders, just serve `dist/client/`:
 
 ```bash
 one build
-```
-
-Then serve `dist/client/` from any static host (Netlify, GitHub Pages, S3, etc.):
-
-```bash
-# example: serve locally
 npx serve dist/client
+# or any static host: Netlify, GitHub Pages, S3, etc.
 ```
 
-No `one serve` needed — just static files.
+No `one serve` needed.
 
 ## Environment Variables
 
-Set `ONE_SERVER_URL` to your production URL before building:
-
 ```bash
-# required for loaders and API routes to work in production
+# required for loaders and API routes in production
 ONE_SERVER_URL=https://myapp.com one build
 ```
 
-Other useful env vars:
-- `PORT` — server port (default: 3000)
-- `HOST` — server host (default: localhost)
+Other env vars: `PORT` (default 3000), `HOST` (default localhost).
+
+## Native Builds
+
+One integrates with existing Expo/React Native build processes:
+
+```bash
+# generate native projects
+one prebuild
+
+# build and run
+one run:ios
+one run:android
+```
+
+For CI/CD, use [EAS Build](https://docs.expo.dev/build/introduction/) — see the EAS guide.
 
 ## Decision Guide
 

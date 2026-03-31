@@ -1,13 +1,13 @@
 ---
 name: building-with-one
-description: Complete guide for building full-stack React apps with One framework. Covers routing, layouts, navigation, styling, configuration, and cross-platform (web + native) development.
+description: Complete guide for building full-stack React apps with One framework. Covers routing, layouts, navigation, components, hooks, typed routes, styling, configuration, devtools, and cross-platform (web + native) development.
 version: 1.0.0
 license: MIT
 ---
 
 # One Framework Guide
 
-One is a full-stack React framework targeting both web and React Native with a single codebase. Built on Vite with file system routing, server-side loaders, and flexible render modes (SSG, SSR, SPA).
+One is a full-stack React framework targeting both web and React Native with a single codebase. Built on Vite with file system routing, server-side loaders, and flexible render modes (SSG, SSR, SPA). For native builds, One supports Metro (recommended) and an experimental Vite bundler.
 
 ## References
 
@@ -15,11 +15,13 @@ Consult these resources as needed:
 
 ```
 references/
-  routing.md              File conventions, dynamic routes, groups, parallel routes, intercepting routes, catch-all, not-found
-  layouts.md              _layout.tsx, Stack, Tabs, Drawer, Slot, nested layouts, layout loaders
-  navigation.md           Link component, useRouter, typed routes, programmatic navigation, protected routes
+  routing.md              File conventions, dynamic routes, groups, parallel routes, intercepting routes, typed routes
+  layouts.md              _layout.tsx, Stack (+ Header Composition API), Tabs, Drawer, Slot, NativeTabs, nested layouts
+  navigation.md           Link (mask, scroll, asChild), useRouter, useLinkTo, Protected, Redirect, route masking
+  components.md           Head (+ iOS Handoff/Spotlight), SafeAreaView, ScrollBehavior, LoadProgressBar, withLayoutContext
+  hooks.md                All hooks: useParams, useSearchParams, useActiveParams, useSegments, useMatches, useBlocker, etc.
   configuration.md        vite.config.ts, one() plugin options, web/native/global settings, env vars, devtools
-  render-modes.md         SSG, SSR, SPA per-page and global, folder suffixes, layout render modes
+  render-modes.md         SSG, SSR, SPA, API per-page and global, folder suffixes, layout render modes
 ```
 
 ## Quick Start
@@ -28,7 +30,7 @@ references/
 npx one
 ```
 
-This scaffolds a new project. Then:
+This scaffolds a new project with starter templates. Then:
 
 ```bash
 bun install
@@ -42,14 +44,20 @@ Access at http://localhost:8081. For native, use Expo Go or build with `one preb
 ```
 app/
   _layout.tsx          Root layout (Stack, Tabs, Drawer, or Slot)
+  _middleware.ts       Server middleware (optional)
   index.tsx            Home route (/)
   about.tsx            Static route (/about)
   blog/
     [slug].tsx         Dynamic route (/blog/:slug)
     _layout.tsx        Nested layout
+  dashboard+spa/       SPA folder (all children are SPA)
+    index.tsx
   api/
     route+api.ts       API endpoint (/api)
+    users/[id]+api.ts  Dynamic API route
+  +not-found.tsx       404 page
 vite.config.ts         One configuration
+app/routes.d.ts        Auto-generated route types
 ```
 
 ## Key Rules
@@ -57,8 +65,23 @@ vite.config.ts         One configuration
 - Routes live in the `app/` directory only
 - Never co-locate components, types, or utilities in `app/` — keep them in `src/`, `components/`, etc.
 - Always have a route that matches `/` (even inside a group route)
-- Use `_layout.tsx` for layouts, never name a route `_layout`
+- Use `_layout.tsx` for layouts — it must render `<Slot>`, `<Stack>`, `<Tabs>`, or `<Drawer>`
 - Use `+api.ts` suffix for API routes, not regular route files
+- Platform-specific files: `.web.tsx`, `.native.tsx`, `.ios.tsx`, `.android.tsx` — never import these directly, the bundler resolves them
+- Pin the `one` version for production stability
+
+## CLI
+
+```bash
+one dev [--clean] [--host] [--port] [--debug]  # dev server (web + native)
+one build [web | ios | android]                 # production build
+one serve [--cluster] [--port]                  # production server (Hono)
+one prebuild                                    # generate native Xcode/Android projects
+one run:ios                                     # build and run iOS app
+one run:android                                 # build and run Android app
+one generate-routes [--typed=runtime|type]       # regenerate route types
+one patch [--force]                             # apply package patches
+```
 
 ## Configuration
 
@@ -72,7 +95,12 @@ export default {
     one({
       web: {
         defaultRenderMode: 'ssg',
-        deploy: 'node',
+        deploy: 'node',          // 'node' | 'vercel' | 'cloudflare'
+        linkPrefetch: 'intent',  // trajectory-based prefetching
+        sitemap: true,
+      },
+      native: {
+        bundler: 'metro',        // recommended for stability
       },
     }),
   ],
@@ -83,27 +111,28 @@ See `./references/configuration.md` for all options.
 
 ## Running the App
 
-**Web development:**
+**Web:**
 ```bash
 one dev
 ```
 
-**Native development:**
+**Native with Expo Go** (recommended for quick iteration):
 ```bash
-# use Expo Go (recommended for quick iteration)
 one dev
-# scan QR code with Expo Go
+# press q, r in terminal to show QR code
+# scan with Expo Go app
+```
 
-# or build native project
+**Native with custom build** (for custom native dependencies):
+```bash
 one prebuild
-one run:ios
-one run:android
+one run:ios    # or one run:android
 ```
 
 **Production:**
 ```bash
-one build
-one serve
+ONE_SERVER_URL=https://myapp.com one build
+one serve --cluster  # cluster mode for high traffic
 ```
 
 ## Code Style
@@ -111,96 +140,52 @@ one serve
 - Use `process.env.EXPO_OS` instead of `Platform.OS` for platform checks
 - Use `import.meta.env.VITE_ENVIRONMENT` for environment checks ('client', 'ssr', 'ios', 'android')
 - Prefix client-exposed env vars with `VITE_`, `EXPO_PUBLIC_`, or `ONE_PUBLIC_`
-- Add `/// <reference types="one/env" />` to a `.d.ts` file for env var types
-- Platform-specific files: `.web.tsx`, `.native.tsx`, `.ios.tsx`, `.android.tsx`
+- Add `/// <reference types="one/env" />` to a `.d.ts` file for typed env vars
+- Use `createRoute<'/path/[param]'>()` for fully typed route params and loaders
 
-## Navigation
+## Routing Exports
 
-Use the `<Link>` component for navigation:
-
-```tsx
-import { Link } from 'one'
-
-<Link href="/about">About</Link>
-
-// dynamic routes
-<Link href={`/blog/${slug}`}>Read Post</Link>
-```
-
-Use `useRouter()` for programmatic navigation:
+Route files support special exports:
 
 ```tsx
-import { useRouter } from 'one'
+// loader — server-side data fetching (tree-shaken from client)
+export async function loader({ params, path, request }) { ... }
 
-const router = useRouter()
-router.push('/settings')
-router.replace('/login')
-router.back()
+// generateStaticParams — expand dynamic SSG routes at build time
+export async function generateStaticParams() { return [{ slug: 'hello' }] }
+
+// sitemap — control sitemap.xml entry for this route
+export const sitemap = { priority: 0.8, changefreq: 'daily', exclude: false }
 ```
 
-See `./references/navigation.md` for full API.
+## Devtools
 
-## Data Loading
+In development, press these shortcuts:
 
-Use loaders for server-side data fetching (tree-shaken from client):
+| Shortcut | Panel |
+|----------|-------|
+| `Alt+Space` | Spotlight menu |
+| `Alt+S` | SEO Preview |
+| `Alt+R` | Route Debug |
+| `Alt+L` | Loader Timing |
+| `Alt+P` | Route Preload |
+| `Alt+E` | Error Panel |
 
-```tsx
-import { useLoader } from 'one'
+## Environment Variables
 
-export async function loader({ params }) {
-  const post = await db.posts.find(params.slug)
-  return { post }
-}
+| Variable | Value |
+|----------|-------|
+| `VITE_ENVIRONMENT` | 'client', 'ssr', 'ios', 'android' |
+| `VITE_NATIVE` | '1' on native, '' on web |
+| `EXPO_OS` | 'web', 'ios', 'android' |
+| `ONE_SERVER_URL` | Auto in dev, set manually in prod |
+| `ONE_CACHE_KEY` | Per-build random key |
 
-export default function PostPage() {
-  const { post } = useLoader(loader)
-  return <Text>{post.title}</Text>
-}
-```
+Client-safe prefixes: `VITE_*`, `EXPO_PUBLIC_*`, `ONE_PUBLIC_*`.
 
-See the `one-loaders` skill for complete loader patterns.
+## Platform Support
 
-## Render Modes
-
-Set per-page with file suffixes or globally in config:
-
-- `page+ssg.tsx` — static generation (default)
-- `page+ssr.tsx` — server-side rendering
-- `page+spa.tsx` — client-side only
-- `route+api.ts` — API endpoint
-
-See `./references/render-modes.md` for details.
-
-## Hooks Reference
-
-| Hook | Purpose |
-|------|---------|
-| `useRouter()` | Programmatic navigation |
-| `useParams()` | Dynamic route params |
-| `useSearchParams()` | URL query parameters |
-| `usePathname()` | Current pathname |
-| `useSegments()` | Route segments array |
-| `useLoader(loader)` | Access loader data |
-| `useLoaderState(loader)` | Loader data with refetch |
-| `useMatches()` | All route match data |
-| `useNavigation()` | Navigation state |
-| `useIsFocused()` | Screen focus state |
-| `useActiveParams()` | Active route params |
-| `useBlocker()` | Block navigation |
-| `useFocusEffect()` | Focus-aware side effects |
-
-## Components Reference
-
-| Component | Purpose |
-|-----------|---------|
-| `<Link>` | Declarative navigation |
-| `<Stack>` | Native stack navigator |
-| `<Tabs>` | Tab navigator |
-| `<Drawer>` | Drawer navigator |
-| `<Slot>` | Render child route (no frame) |
-| `<Head>` | Set page head/meta tags |
-| `<Redirect>` | Declarative redirect |
-| `<SafeAreaView>` | Safe area wrapper |
-| `<Protected>` | Auth-gated routes |
-| `<LoadProgressBar>` | Loading indicator |
-| `<ScrollBehavior>` | Scroll restoration |
+- **Web**: Browser via Vite
+- **iOS**: React Native via Metro (recommended) or Vite
+- **Android**: React Native via Metro (recommended) or Vite
+- **Not supported**: Windows, Bun runtime for development
