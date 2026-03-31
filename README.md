@@ -30,6 +30,7 @@ Add as a Remote Rule using the GitHub URL.
 | **one-deployment** | Deploy to Node, Vercel, Cloudflare, or static hosts |
 | **one-loaders** | Server-side data loading, caching, redirects |
 | **one-render-modes** | SSG, SSR, SPA per-page and globally |
+| **one-guides** | Auth, images, CSS, dark mode, Tamagui, MDX, OG images, ISR, skew protection, native builds, common issues |
 
 ## License
 

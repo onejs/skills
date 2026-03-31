@@ -20,8 +20,10 @@ references/
   navigation.md           Link (mask, scroll, asChild), useRouter, useLinkTo, Protected, Redirect, route masking
   components.md           Head (+ iOS Handoff/Spotlight), SafeAreaView, ScrollBehavior, LoadProgressBar, withLayoutContext
   hooks.md                All hooks: useParams, useSearchParams, useActiveParams, useSegments, useMatches, useBlocker, etc.
-  configuration.md        vite.config.ts, one() plugin options, web/native/global settings, env vars, devtools
+  configuration.md        vite.config.ts, one() plugin options, web/native/global settings, env vars
   render-modes.md         SSG, SSR, SPA, API per-page and global, folder suffixes, layout render modes
+  middleware.md           _middleware.ts, createMiddleware, auth, CORS, redirects, context sharing
+  devtools.md             Alt+Space spotlight, SEO preview, route debug, loader timing, source inspector, input recording
 ```
 
 ## Quick Start
