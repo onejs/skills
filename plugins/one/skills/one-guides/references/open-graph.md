@@ -49,15 +49,23 @@ import { Head, useParams } from 'one'
 ## Custom Fonts
 
 ```tsx
+import { ImageResponse } from '@vercel/og'
 import { readFile } from 'fs/promises'
 import { join } from 'path'
 
-const fontData = readFile(join(process.cwd(), 'public/fonts/Inter-Bold.ttf'))
+export const GET = async (request: Request) => {
+  const fontData = await readFile(join(process.cwd(), 'public/fonts/Inter-Bold.ttf'))
 
-return new ImageResponse(jsx, {
-  width: 1200, height: 630,
-  fonts: [{ name: 'Inter', data: await fontData, weight: 700 }],
-})
+  return new ImageResponse(
+    <div style={{ display: 'flex', fontSize: 60, fontWeight: 700 }}>
+      Custom Font
+    </div>,
+    {
+      width: 1200, height: 630,
+      fonts: [{ name: 'Inter', data: fontData, weight: 700 }],
+    }
+  )
+}
 ```
 
 ## Caching

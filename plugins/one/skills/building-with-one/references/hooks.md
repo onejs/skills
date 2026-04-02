@@ -125,7 +125,7 @@ Useful for route matching and auth guards.
 Access loader data. Must be in the same file as the loader:
 
 ```tsx
-export function loader() {
+export async function loader() {
   return { posts: await fetchPosts() }
 }
 

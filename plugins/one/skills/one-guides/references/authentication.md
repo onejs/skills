@@ -10,49 +10,9 @@ Official docs: [FAQ](https://onestack.dev/docs/faq), [Middlewares](https://onest
 | **Hosted** (Clerk, Supabase Auth) | Fastest setup, managed infrastructure |
 | **Custom** | Specific requirements only |
 
-## Session Context
+## Session State
 
-```tsx
-// features/auth/ctx.tsx
-import { createContext, useContext, useState, useEffect } from 'react'
-
-const AuthContext = createContext(null)
-
-export function useSession() {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useSession must be used within SessionProvider')
-  return ctx
-}
-
-export function SessionProvider({ children }) {
-  const [session, setSession] = useState(null)
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    storage.get('session').then((token) => {
-      setSession(token)
-      setIsLoading(false)
-    })
-  }, [])
-
-  return (
-    <AuthContext.Provider value={{
-      session,
-      isLoading,
-      signIn: (token) => { storage.set('session', token); setSession(token) },
-      signOut: () => { storage.remove('session'); setSession(null) },
-    }}>
-      {children}
-    </AuthContext.Provider>
-  )
-}
-```
-
-### Cross-Platform Storage
-
-Use platform-specific files:
-- `storage.web.ts` — localStorage or MMKV
-- `storage.native.ts` — MMKV or expo-secure-store
+One doesn't prescribe a session management pattern — use whatever your auth library provides (Better Auth's `useSession`, Clerk's `useAuth`, Supabase's `useUser`, etc). The examples below use a generic `useSession()` hook to show One-specific integration points.
 
 ## Protected Routes
 

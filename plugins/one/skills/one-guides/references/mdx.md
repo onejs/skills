@@ -38,6 +38,12 @@ export async function loader({ params }) {
   return { frontmatter, code }
 }
 
+const components = {
+  h1: (props) => <Text style={{ fontSize: 32, fontWeight: 'bold' }} {...props} />,
+  p: (props) => <Text style={{ fontSize: 16, lineHeight: 24 }} {...props} />,
+  code: (props) => <Text style={{ fontFamily: 'monospace' }} {...props} />,
+}
+
 export default function DocsPage() {
   const { code, frontmatter } = useLoader(loader)
   const Component = useMemo(() => getMDXComponent(code), [code])
