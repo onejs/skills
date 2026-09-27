@@ -112,8 +112,7 @@ npx expo install @bottom-tabs/react-navigation react-native-bottom-tabs
 ```
 
 ```tsx
-import { NativeTabs } from 'one'
-// or: import { NativeTabs } from 'one/native-tabs'
+import { NativeTabs } from 'one/native-tabs'
 
 export default function Layout() {
   return (

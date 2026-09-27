@@ -14,7 +14,7 @@ A layout must render exactly one of these:
 | `<Stack />` | `'one'` | Native stack navigation (push/pop) |
 | `<Tabs />` | `'one'` | Bottom tab navigation |
 | `<Drawer />` | `'one/drawer'` | Slide-out drawer navigation |
-| `<NativeTabs />` | `'one'` or `'one/native-tabs'` | Platform-native tab bars |
+| `<NativeTabs />` | `'one/native-tabs'` | Platform-native tab bars |
 
 ## Basic Layout
 
@@ -134,7 +134,7 @@ export default function TabLayout() {
 Platform-native tab bars (iOS UITabBarController, Android Material BottomNavigation):
 
 ```tsx
-import { NativeTabs } from 'one'
+import { NativeTabs } from 'one/native-tabs'
 
 export default function Layout() {
   return (

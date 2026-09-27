@@ -154,17 +154,17 @@ one({
 
 ```bash
 one build
-cd dist
 wrangler deploy
 ```
 
-Build generates `dist/worker.js` and `dist/wrangler.jsonc`.
+Build generates `dist/worker/index.js` and `dist/worker/wrangler.json`.
 
 ### How it works
 
 - Routes are lazy-loaded (loaded on-demand, not all upfront)
 - Static assets served from Workers KV or R2
 - SSR/API routes run in the Worker
+- API route handlers receive the Worker's `env` and `executionCtx` as `worker` on their second argument (`undefined` outside the Worker)
 
 To customize, create `wrangler.jsonc` in the project root — One merges its config with yours.
 

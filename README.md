@@ -7,14 +7,14 @@ Official AI agent skills for building full-stack React apps with [One](https://o
 ### Claude Code
 
 ```bash
-/plugin marketplace add onestack/skills
+/plugin marketplace add onejs/skills
 /plugin install one
 ```
 
 ### Any agent
 
 ```bash
-bunx skills add onestack/skills
+bunx skills add onejs/skills
 ```
 
 ### Cursor
