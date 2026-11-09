@@ -1,74 +1,15 @@
-# Common Issues
+# Troubleshooting
 
-Official docs: [Common Issues](https://onestack.dev/docs/common-issues), [FAQ](https://onestack.dev/docs/faq), [Configuration](https://onestack.dev/docs/configuration)
+[Common issues](https://onestack.dev/docs/common-issues), [configuration](https://onestack.dev/docs/configuration).
 
-## SSR Errors
+Start with the failing import, installed dependency and environment. One's Vite/Rolldown native path differs from older Metro/Expo setups. Do not replace the bundler or add Babel config before locating the cause.
 
-If server rendering fails, try bundling all dependencies:
+For an SSR dependency that needs transformation, inspect One's `ssr.autoDepsOptimization` and targeted Vite `ssr.noExternal` settings. `noExternal: true` can help diagnose an externalization problem but also bundles packages depending on Node path behavior. Avoid a broad permanent workaround when one dependency is responsible.
 
-```ts
-// vite.config.ts
-{ ssr: { noExternal: true } }
-```
+A missing default export or CommonJS `require` failure needs inspection of that package's exports and transformed module. Do not blindly exclude every failing package from optimizeDeps or add multiple CommonJS plugins. Packages publishing JSX or Flow in `.js` may need One's documented `patches` configuration.
 
-This makes Vite transform all deps with esbuild. Downside: can break `__dirname`/`__filename` usage and slow things down. For individual packages, use `patches` instead.
+Native fetch requires an absolute URL, for example `${process.env.ONE_SERVER_URL}/api/hello`. A physical device cannot use the computer's localhost; use an accessible dev host. Browser relative URLs are fine. Global native `fetch` supports response streaming; `One.Network` reports connectivity and is not a fetch client.
 
-## `SyntaxError: does not provide an export named 'default'`
+`Application has not been registered` can indicate a module failed before registration. Inspect the earlier error as well as `native.key` and the built container's registration name. After native API/permission changes, prebuild and rebuild the binary; clearing JS cache cannot add native code.
 
-Add the dependency to `optimizeDeps.exclude`:
-
-```ts
-{ optimizeDeps: { exclude: ['problem-package'] } }
-```
-
-## `require is not defined`
-
-Try `vite-require` or `vite-plugin-commonjs` plugins.
-
-## React Native Package Issues
-
-Packages built only for Metro may have:
-- Flow types in `.js` files
-- JSX in `.js` files (not `.jsx`)
-- ESM without proper `package.json` declarations
-- Missing import extensions
-
-Fix with patches:
-
-```ts
-one({
-  patches: {
-    'react-native-vector-icons': {
-      '**/*.js': ['jsx', 'flow'],  // transpile JSX, remove Flow
-    },
-  },
-})
-```
-
-## `fetch()` on Native
-
-Relative URLs don't work on native. Use `ONE_SERVER_URL`:
-
-```tsx
-// BAD
-const res = await fetch('/api/hello')
-
-// GOOD
-const res = await fetch(`${process.env.ONE_SERVER_URL}/api/hello`)
-```
-
-| Platform | Relative URL | localhost | Local IP |
-|----------|-------------|-----------|----------|
-| Web | works | works | works |
-| iOS Simulator | fails | works | works |
-| Real iOS Device | fails | fails | works |
-
-## `Application has not been registered`
-
-Set `native.key` in your vite config:
-
-```ts
-one({ native: { key: 'my-app' } })
-```
-
-Must match the key in your built native app container.
+Current native setup exports `require('one/react-native-config')` from `react-native.config.cjs`. Read the [native build reference](native-builds.md) for missing pods/workspace or Expo migration issues.

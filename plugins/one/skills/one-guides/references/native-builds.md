@@ -1,108 +1,23 @@
-# Native Builds
+# Native projects and updates
 
-Official docs: [one dev](https://onestack.dev/docs/one-dev), [iOS Native Guide](https://onestack.dev/docs/guides-ios-native), [EAS Guide](https://onestack.dev/docs/guides-eas), [Metro Mode](https://onestack.dev/docs/metro-mode)
+[Native setup](https://onestack.dev/docs/native-setup), [iOS builds](https://onestack.dev/docs/guides-ios-native), [Expo migration](https://onestack.dev/native/migrating-to-one), [OTA](https://onestack.dev/docs/guides-ota-updates).
 
-## Quick Development (Expo Go)
-
-No build needed — install Expo Go on your device:
+Current One uses Vite/Rolldown and OXC with no required Expo or Babel setup. Configure `native.app` in `vite.config.ts`, including app name and platform identifiers. Export `require('one/react-native-config')` from `react-native.config.cjs`.
 
 ```bash
-one dev
-# press q, r in terminal to show QR code
-# scan with Expo Go
+npx one prebuild
+npx one dev
+# another terminal
+npx one run:ios
+# or: npx one run:android
 ```
 
-Works for most `expo-*` packages without custom native code.
+Expo Go does not contain One's native components. A custom native binary is necessary. Metro is an optional dev bundler for a dependency that requires it; production JS still uses Rolldown. Use current CLI help and the app's scripts.
 
-## Custom Native Builds
+After changing permissions, native packages, icons, splash, capabilities, or release-used native groups, rerun the relevant prebuild and native build. Native API usage descriptions belong in `native.app`; for example `imagePicker.camera` supplies camera usage configuration. Prefer the manifest field over duplicating a generated Info.plist key.
 
-When you need custom native dependencies:
+For iOS distribution open `ios/*.xcworkspace`, configure the app's signing team/capabilities, archive, and distribute through Xcode. An unavailable workspace often means pods were not installed. A stale `ios/.xcode.env.local` can point to a removed Node executable.
 
-### Prebuild
+EAS and Expo prebuild remain optional for apps keeping Expo tooling. Read the migration guide rather than adding old vxrn Expo plugins to every One app. Do not regenerate or delete hand-maintained native projects without understanding what the app owns.
 
-```bash
-one prebuild    # generate Xcode/Android projects
-one run:ios     # build and run iOS
-one run:android # build and run Android
-```
-
-### Xcode (Manual)
-
-```bash
-open ios/*.xcworkspace
-```
-
-Select simulator/device → click Run.
-
-### Production Archive
-
-1. Open `.xcworkspace` in Xcode
-2. Set up signing (Signing & Capabilities → select team)
-3. Product → Archive
-4. Distribute App → upload to App Store/TestFlight
-
-## EAS Build
-
-Cloud builds without local Xcode/Android Studio:
-
-```bash
-eas build:configure
-eas build
-eas submit
-```
-
-### Setup
-
-1. Install `expo` in your project
-2. Add `react-native.config.cjs`:
-   ```js
-   module.exports = {
-     commands: [...require('vxrn/react-native-commands')],
-   }
-   ```
-3. Add to `app.json`:
-   ```json
-   { "expo": { "plugins": ["vxrn/expo-plugin"] } }
-   ```
-4. Add postinstall to `package.json`:
-   ```json
-   { "scripts": { "postinstall": "one patch" } }
-   ```
-
-### Node Version
-
-EAS defaults to old Node. Fix in `eas.json`:
-
-```json
-{
-  "build": {
-    "shared": { "node": "20.15.0" },
-    "development": { "extends": "shared" },
-    "production": { "extends": "shared" }
-  }
-}
-```
-
-## Metro Mode
-
-Recommended for production native builds:
-
-```ts
-one({ native: { bundler: 'metro' } })
-```
-
-Maximum compatibility with all React Native packages. Lazy startup available:
-
-```ts
-one({ native: { bundler: 'metro', bundlerOptions: { startup: 'lazy' } } })
-```
-
-## Troubleshooting
-
-**Missing `.xcworkspace`:** Run `cd ios && pod install`
-
-**`node: No such file or directory` in Xcode:** Delete `ios/.xcode.env.local`
-
-**`No Metro config found`:** Ensure `react-native.config.cjs` exists and `vxrn/expo-plugin` is in `app.json`
-
-**`Application has not been registered`:** Set `native.key` in config to match your app container name
+`One.Updates` provides One's OTA path. Bundle updates must match the binary's runtime and native API set; they cannot add linked feature groups, native packages or permissions. Read the OTA guide and preserve the app's release process.

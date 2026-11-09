@@ -1,76 +1,23 @@
-# MDX
+# MDX content routes
 
-Official docs: [MDX Guide](https://onestack.dev/docs/guides-mdx)
+[MDX guide](https://onestack.dev/docs/guides-mdx).
 
-## Setup
-
-```bash
-yarn add @vxrn/mdx mdx-bundler
-```
-
-`@vxrn/mdx` bundles Rehype plugins with mdx-bundler for:
-- Syntax highlighting (refractor)
-- GitHub Flavored Markdown
-- Smart typography
-- Auto-linked headings with slugified IDs
-- Image metadata with blur placeholders
-- Reading time calculation
-- Frontmatter with heading extraction
-
-## Route with MDX
+`@vxrn/mdx` and `mdx-bundler` provide file-driven content, frontmatter, headings, reading time and image metadata. Keep file reads and MDX compilation in loaders/build-time code.
 
 ```tsx
-// app/docs/[slug].tsx
-import { getMDXComponent } from 'mdx-bundler/client'
-import { useMemo } from 'react'
-import { useLoader } from 'one'
-
 export async function generateStaticParams() {
   const { getAllFrontmatter } = await import('@vxrn/mdx')
-  return getAllFrontmatter('data').map(({ slug }) => ({
-    slug: slug.replace(/.*docs\//, ''),
-  }))
+  return getAllFrontmatter('data/docs').map(({ slug }) => ({ slug }))
 }
 
 export async function loader({ params }) {
   const { getMDXBySlug } = await import('@vxrn/mdx')
-  const { frontmatter, code } = await getMDXBySlug('data', params.slug)
-  return { frontmatter, code }
-}
-
-const components = {
-  h1: (props) => <Text style={{ fontSize: 32, fontWeight: 'bold' }} {...props} />,
-  p: (props) => <Text style={{ fontSize: 16, lineHeight: 24 }} {...props} />,
-  code: (props) => <Text style={{ fontFamily: 'monospace' }} {...props} />,
-}
-
-export default function DocsPage() {
-  const { code, frontmatter } = useLoader(loader)
-  const Component = useMemo(() => getMDXComponent(code), [code])
-
-  return (
-    <View style={{ padding: 20 }}>
-      <Text style={{ fontSize: 48, fontWeight: 'bold' }}>{frontmatter.title}</Text>
-      <Component components={components} />
-    </View>
-  )
+  return getMDXBySlug('data/docs', params.slug)
 }
 ```
 
-Note: Use `await import('@vxrn/mdx')` (dynamic import) because some rehype/remark dependencies are ESM-only.
+Choose paths and slug mapping that match the actual content directory and route. In the page, use `useLoader(loader)` and memoize `getMDXComponent(code)` from `mdx-bundler/client`. Supply an HTML component map for web or a deliberate React Native map for native; a web MDX body cannot automatically render as native Text.
 
-## Vite Config
+Dynamic imports in the server exports accommodate the compiler's ESM dependencies. Use targeted SSR externalization only if required by the installed dependency. `@vxrn/mdx` reports content dependencies for HMR; custom file reads can register `watchFile` from `one`.
 
-```ts
-export default defineConfig({
-  ssr: {
-    noExternal: true,
-    external: ['@vxrn/mdx'],
-  },
-  plugins: [one({ web: { defaultRenderMode: 'ssg' } })],
-})
-```
-
-## Hot Reload
-
-`@vxrn/mdx` has built-in HMR — MDX file changes auto-refresh without `watchFile`. For custom file reading, use `watchFile()` from `one`.
+MDX executes compiled JavaScript. Use a trusted content source; arbitrary user text should not be treated as an executable MDX module.

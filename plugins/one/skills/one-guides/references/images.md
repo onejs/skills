@@ -1,74 +1,17 @@
 # Images
 
-Official docs: [Features](https://onestack.dev/docs/features), [MDX Guide](https://onestack.dev/docs/guides-mdx)
+[Image metadata](https://onestack.dev/docs/guides-images), [native Image](https://onestack.dev/native/image).
 
-## `?imagedata` Imports
-
-Import images with automatic dimensions and blur placeholders at build time:
-
-```bash
-npm install sharp
-```
+Install `sharp` when using build-time metadata imports:
 
 ```tsx
-import heroImage from '/hero.jpg?imagedata'
+import hero from '/images/hero.jpg?imagedata'
 
-// heroImage = {
-//   src: '/hero.jpg',
-//   width: 1920,
-//   height: 1080,
-//   blurDataURL: 'data:image/jpeg;base64,...'
-// }
-
-<img {...heroImage} alt="Hero" />
+<img src={hero.src} width={hero.width} height={hero.height} alt="Hero" />
 ```
 
-Works with public directory (`/images/hero.jpg`) and relative imports (`./avatar.png`).
+The import supplies `src`, `width`, `height`, and `blurDataURL`. Use dimensions to reserve layout space; render a separate blur placeholder if desired, then hide it once the full image loads. Do not spread `blurDataURL` onto a DOM element as an unknown attribute.
 
-## Blur Placeholders
+Public and relative image imports are supported. `getImageData` from `one/image` provides server/build-time processing. `@vxrn/mdx` can include frontmatter image metadata. Read that package's return type for the current fields.
 
-The blur placeholder is a tiny 10px-wide base64 JPEG for LQIP (Low Quality Image Placeholder):
-
-```tsx
-import hero from '/hero.jpg?imagedata'
-
-<div style={{ position: 'relative' }}>
-  <img
-    src={hero.blurDataURL}
-    style={{ filter: 'blur(20px)', opacity: loaded ? 0 : 1, transition: 'opacity 0.3s' }}
-  />
-  <img {...hero} onLoad={() => setLoaded(true)} alt="Hero" />
-</div>
-```
-
-## Programmatic Usage
-
-```tsx
-import { getImageData } from 'one/image'
-
-const data = await getImageData('/images/hero.jpg')
-// { src, width, height, blurDataURL }
-```
-
-## MDX Frontmatter
-
-With `@vxrn/mdx`, frontmatter images are auto-processed:
-
-```yaml
----
-image: /images/post-hero.jpg
----
-```
-
-Returns `frontmatter.imageMeta` with `{ width, height, blurDataURL }`.
-
-## Supported Formats
-
-JPEG, PNG, WebP, AVIF, GIF, TIFF, SVG (dimensions only).
-
-## Benefits
-
-- Build-time processing, zero runtime cost
-- Prevents layout shift (width/height for browser)
-- Type-safe with `ImageData` type from `one`
-- Works with any image component
+For native images, check `One.UI.Image` and its source, sizing and load-event contract before adding another image loader. A web `?imagedata` import does not itself render a React Native image.

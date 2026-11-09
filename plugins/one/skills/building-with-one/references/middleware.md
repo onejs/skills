@@ -1,113 +1,18 @@
 # Middleware
 
-Official docs: [Middlewares](https://onestack.dev/docs/routing-middlewares)
-
-Middlewares intercept requests before they reach routes. Place `_middleware.ts` files in any `app/` directory.
-
-## Basic Usage
+[Middleware](https://onestack.dev/docs/routing-middlewares), [API method parity](https://onestack.dev/docs/routing-api-routes#dev-and-prod-parity).
 
 ```ts
-// app/_middleware.ts
-import { createMiddleware } from 'one'
-
-export default createMiddleware(async ({ request, next }) => {
-  console.log(`${request.method} ${request.url}`)
-  return await next()
-})
-```
-
-## API
-
-```ts
-type MiddlewareProps = {
-  request: Request              // standard Web API Request
-  next: () => Promise<Response> // call next middleware/route
-  context: Record<string, any> // shared mutable object for passing data
-}
-```
-
-**Return values:**
-- `Response` — stops the chain, returns immediately
-- `await next()` — continues to next middleware/route
-- `null` or `undefined` — same as calling `next()`
-
-## Hierarchical Execution
-
-Middlewares run root → leaf:
-
-```
-Request to /blog/post/123
-  1. app/_middleware.ts         (runs first)
-  2. app/blog/_middleware.ts    (runs second)
-  3. route handler              (runs last)
-  Responses bubble back up
-```
-
-## Common Patterns
-
-### Auth Protection
-
-```ts
-// app/api/_middleware.ts
 import { createMiddleware } from 'one'
 
 export default createMiddleware(async ({ request, next, context }) => {
-  const token = request.headers.get('authorization')?.replace('Bearer ', '')
-  if (!token) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-  context.user = await validateToken(token)
+  context.requestId = crypto.randomUUID()
   return await next()
 })
 ```
 
-### CORS
+Put `_middleware.ts` in a route directory. The chain runs root to leaf and responses return outward. A returned Response intercepts the request; `next()` continues and may return a Response, null, or void. Declare keys on `MiddlewareContext` through module augmentation when sharing typed data between middleware files.
 
-```ts
-import { createMiddleware, setResponseHeaders } from 'one'
+Use middleware for request concerns such as API auth, redirects and CORS. It is server-only and does not run during static generation. Authorize protected loaders independently; layout and page loaders run concurrently.
 
-export default createMiddleware(async ({ request, next }) => {
-  setResponseHeaders((headers) => {
-    headers.set('Access-Control-Allow-Origin', '*')
-    headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-    headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-  })
-  if (request.method === 'OPTIONS') return new Response(null, { status: 204 })
-  return await next()
-})
-```
-
-### Redirects
-
-```ts
-export default createMiddleware(async ({ request, next }) => {
-  const url = new URL(request.url)
-  if (url.pathname === '/old') return Response.redirect(new URL('/new', url.origin), 301)
-  return await next()
-})
-```
-
-### Sharing Context
-
-```ts
-// app/_middleware.ts — set context
-context.requestId = crypto.randomUUID()
-context.user = await getUserFromToken(token)
-
-// app/api/_middleware.ts — read context from parent
-console.log(`Request ${context.requestId} from ${context.user?.id}`)
-```
-
-## Platform Support
-
-Server-only. Works on Node, Vercel, Cloudflare. Does not run on native or during static generation.
-
-## Middleware vs Loader Redirects
-
-| | Middleware | Loader Redirects |
-|---|---|---|
-| Best for | URL rewrites, CORS, API auth | Protecting page data, SSR auth guards |
-| Runs on | Every server request | When loader data is fetched |
-| Client-side nav | Not involved | Server intercepts, prevents data leak |
-
-For protecting SSR pages, prefer loader redirects. For request-level concerns (CORS, API auth, URL rewrites), use middleware.
+For CORS, answer OPTIONS explicitly and add headers to the actual response too. If overriding Vite's `server.cors`, retain `preflightContinue: true` so your preflight handler runs in development as it does in production. A credentialed origin policy must use the app's allowed origins, rather than `*`.

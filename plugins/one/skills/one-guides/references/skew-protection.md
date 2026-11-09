@@ -1,72 +1,9 @@
-# Skew Protection
+# Web deployment skew
 
-Official docs: [Configuration](https://onestack.dev/docs/configuration)
+[Skew protection](https://onestack.dev/docs/guides-skew-protection).
 
-Handles stale client bundles after deployments.
+Old tabs can request chunks removed by a newer deploy. `web.skewProtection: true` is the default error-recovery mode: One catches chunk/preload failures and reloads with a session guard against loops.
 
-## The Problem
+`web.skewProtection: 'proactive'` additionally emits a version endpoint and polls for a new cache key. A stale client uses a full page load on a later navigation. `one-version-update` can support an app-owned update notice. Prefer the installed implementation's timing and event types over copying internal flags into app code.
 
-After deploy, users with open tabs have old JS bundles. Dynamic imports reference chunks that no longer exist → 404s, broken UI, blank pages.
-
-## Error Recovery (Default)
-
-`skewProtection: true` (default) — detects chunk load failures and auto-reloads:
-
-- Catches `vite:preloadError` events
-- Catches dynamic import failures (Chrome, Firefox, Safari patterns)
-- SessionStorage guard prevents infinite reload loops (10s cooldown)
-
-Always on unless explicitly disabled.
-
-## Proactive Mode
-
-```ts
-one({ web: { skewProtection: 'proactive' } })
-```
-
-Adds version polling on top of error recovery:
-
-1. Build emits `version.json` with cache key
-2. Client polls every 2 minutes
-3. When version doesn't match → app marked stale
-4. Next navigation does full page load instead of SPA transition
-
-### Events
-
-```ts
-window.addEventListener('one-version-update', (e) => {
-  console.log('New version:', e.detail.version)
-  // show "update available" banner
-})
-
-// or check the flag
-if (window.__oneVersionStale) { ... }
-```
-
-## CDN Edge Caching
-
-With skew protection, One sets CDN cache headers for SSG/SPA pages:
-
-```
-cache-control: public, s-maxage=60, stale-while-revalidate=120
-```
-
-SSR pages get `no-cache`. If a cached page loads a missing chunk, skew protection reloads → fresh HTML from origin.
-
-## Disabling
-
-```ts
-one({ web: { skewProtection: false } })
-```
-
-## Configuration
-
-```ts
-one({
-  web: {
-    skewProtection: true,         // error recovery only (default)
-    skewProtection: 'proactive',  // + version polling
-    skewProtection: false,        // disabled
-  },
-})
-```
+Set `false` only when the app intentionally owns recovery. Keep HTML/version endpoint cache policy compatible with the deployment, and avoid long-lived cached HTML referencing deleted chunks. SSR personalized response caching still needs its own policy; skew recovery does not authorize public caching.

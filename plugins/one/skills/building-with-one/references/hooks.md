@@ -1,258 +1,40 @@
 # Hooks
 
-Official docs: [Hooks Overview](https://onestack.dev/docs/hooks-useRouter), [useRouter](https://onestack.dev/docs/hooks-useRouter), [useNavigation](https://onestack.dev/docs/hooks-useNavigation), [useParams](https://onestack.dev/docs/hooks-useParams), [Loaders](https://onestack.dev/docs/routing-loader)
+Import router hooks from `one`. Read the individual [hook references](https://onestack.dev/docs/hooks-useRouter) for the installed API.
 
-All hooks are imported from `'one'`.
+| Hook | Use |
+| --- | --- |
+| `useParams` | Focused route's decoded dynamic and search params |
+| `useActiveParams` | Params of the globally active route |
+| `usePathname` | Resolved pathname without query/hash |
+| `useSegments` | File-route segments, including bracket names |
+| `useSearchParams` | Read-only query object, or schema-validated query values |
+| `useLoader`, `useLoaderState` | Loader data, manual refetch, and idle/loading state |
+| `useMatches`, `useMatch`, `usePageMatch` | Matched route and loader data |
+| `useNavigation` | React Navigation access, including `setOptions` and parent navigators |
+| `useFocusEffect`, `useIsFocused` | Focus-scoped subscriptions and focused state |
+| `useBlocker` | Unsaved-change navigation blocking |
+| `useTabs`, `useStack`, `useDrawer` | Headless web navigator state |
+| `useScrollGroup` | Shared web scroll position for a layout's children |
 
-## useRouter
+`useFocusEffect(effect, dependencies)` accepts a dependency array directly. Return the subscription cleanup. `useBlocker` reports `unblocked`, `blocked`, or `proceeding`; a blocked navigation can be `reset()` or `proceed()`.
 
-Imperative navigation. Returns a static object (never updates):
-
-```tsx
-const router = useRouter()
-
-router.push('/path')              // push onto stack
-router.replace('/path')           // replace current screen
-router.navigate('/path')          // smart navigation (push or pop)
-router.back()                     // go back
-router.canGoBack()                // check if back is possible
-router.dismiss()                  // dismiss modal/sheet
-router.dismissAll()               // dismiss all modals
-router.canDismiss()               // check if dismiss is possible
-router.setParams({ key: 'val' })  // update query params
-router.subscribe(listener)        // listen to state changes
-router.onLoadState(listener)      // listen to loading state
-```
-
-### Route Masking (web only)
-
-Display a different URL in the browser while navigating to a specific route:
+## Typed search params
 
 ```tsx
-router.push('/photos/5/modal', {
-  mask: { href: '/photos/5' }
-})
-```
+import { useSearchParams } from 'one'
+import { z } from 'zod'
 
-### Scroll Control
+export const query = z.object({ page: z.coerce.number().default(1) })
 
-```tsx
-router.push('/next', { scroll: false })  // don't scroll to top
-```
-
-## useParams
-
-URL parameters for the focused route. Only updates when the route is focused:
-
-```tsx
-const { id, sort } = useParams<{ id: string; sort?: string }>()
-```
-
-For catch-all routes (`[...slug].tsx`):
-
-```tsx
-const { slug } = useParams<{ slug: string[] }>()
-// slug = ['api', 'hooks', 'useParams']
-```
-
-Parameters are automatically URL-decoded.
-
-### With createRoute (recommended for typed params)
-
-```tsx
-import { createRoute } from 'one'
-
-const route = createRoute<'/posts/[id]'>()
-
-export default function Page() {
-  const { id } = route.useParams()  // id is typed as string
+export function Pagination() {
+  const [{ page }, update] = useSearchParams(query)
+  return <button onClick={() => update({ page: page + 1 })}>Next</button>
 }
 ```
 
-## useActiveParams
+The schema must implement synchronous Standard Schema validation. Query inputs are strings or repeated-key string arrays. Path params and hash are excluded. `update(partial, { replace: true })` merges query keys; `null` or `undefined` removes a key. Invalid input throws `SearchValidationError` to the nearest error boundary. The no-schema form returns URLSearchParams; `{ global: true }` observes the active route.
 
-Like `useParams` but updates on every navigation, even when the route is not focused. Use for analytics, global UI, or breadcrumbs:
+One discovers exported schemas through static imports for typed `Link searchParams` and SSR loader `searchParams`. Inline schemas and dynamic imports are not discoverable. SSR document requests, client navigation and refetch validate before loader execution; an invalid query returns 400. SSG and SPA do not receive this validated loader query. See [search params](https://onestack.dev/docs/hooks-useSearchParams).
 
-```tsx
-const params = useActiveParams()
-```
-
-## useSearchParams
-
-URL search parameters as a read-only `URLSearchParams` object:
-
-```tsx
-const searchParams = useSearchParams()
-searchParams.get('q')       // string | null
-searchParams.has('key')     // boolean
-searchParams.getAll('tag')  // string[] (for repeated params)
-```
-
-Pass `{ global: true }` to update on any route change (not just focused).
-
-To update search params, use the router:
-
-```tsx
-const params = new URLSearchParams(searchParams)
-params.set('sort', 'date')
-router.push(`/products?${params.toString()}`)
-```
-
-## usePathname
-
-Current pathname without query or hash:
-
-```tsx
-const pathname = usePathname()
-// URL: /blog/hello?ref=twitter#comments
-// Returns: "/blog/hello"
-```
-
-## useSegments
-
-Route segments as an array (matches file structure, not resolved URL):
-
-```tsx
-const segments = useSegments()
-// File: app/users/[id]/settings.tsx
-// Returns: ['users', '[id]', 'settings']  (not ['users', '123', 'settings'])
-```
-
-Useful for route matching and auth guards.
-
-## useLoader
-
-Access loader data. Must be in the same file as the loader:
-
-```tsx
-export async function loader() {
-  return { posts: await fetchPosts() }
-}
-
-export default function Page() {
-  const { posts } = useLoader(loader)
-}
-```
-
-Automatically refetches when pathname, params, or search params change.
-
-## useLoaderState
-
-Extended loader hook with manual refetch and loading state:
-
-```tsx
-// with loader — replaces useLoader
-const { data, refetch, state } = useLoaderState(loader)
-// state: 'idle' | 'loading'
-
-// without loader — access refetch from any component in the tree
-const { refetch, state } = useLoaderState()
-```
-
-All `useLoaderState` hooks on the same route share state. Calling `refetch()` from anywhere re-runs the loader for all subscribers.
-
-Use cases: pull-to-refresh, polling, form revalidation, error retry.
-
-## useMatches
-
-All matched routes from root layout to current page:
-
-```tsx
-const matches = useMatches()
-// Each match: { routeId, pathname, params, loaderData }
-
-// access layout data from a page
-const layoutData = matches[0]?.loaderData
-
-// access page data from a layout
-const pageData = matches[matches.length - 1]?.loaderData
-```
-
-Related: `useMatch(routeId)` finds a specific match, `usePageMatch()` gets the current page match.
-
-## useBlocker
-
-Block navigation when conditions are met (unsaved changes):
-
-```tsx
-const blocker = useBlocker(isDirty)
-
-// blocker.state: 'unblocked' | 'blocked' | 'proceeding'
-if (blocker.state === 'blocked') {
-  blocker.reset()    // cancel navigation, stay
-  blocker.proceed()  // allow navigation
-  blocker.location   // where user tried to go
-}
-```
-
-Function-based blocking:
-
-```tsx
-const blocker = useBlocker(({ currentLocation, nextLocation, historyAction }) => {
-  return currentLocation.startsWith('/edit') && !nextLocation.startsWith('/edit')
-})
-```
-
-Web: intercepts back/forward, pushState, beforeunload. Native: intercepts back navigation and screen removal.
-
-## useFocusEffect
-
-Like `useEffect` but only runs when the route is focused. Accepts a dependency array directly (no `useCallback` wrapper needed):
-
-```tsx
-useFocusEffect(() => {
-  const sub = API.subscribe(userId, setUser)
-  return () => sub.unsubscribe()
-}, [userId])
-```
-
-## useIsFocused
-
-Boolean — `true` if the current screen is active:
-
-```tsx
-const isFocused = useIsFocused()
-```
-
-## useLinkTo
-
-Generate link props for custom components:
-
-```tsx
-const linkProps = useLinkTo({ href: '/profile' })
-// returns: { href, role: 'link', onPress }
-
-<Pressable {...linkProps}>
-  <Text>Go to Profile</Text>
-</Pressable>
-```
-
-## useNavigation
-
-Low-level React Navigation access. Prefer `useRouter` for most cases:
-
-```tsx
-const navigation = useNavigation()
-
-navigation.setOptions({ title: 'New Title' })
-navigation.addListener('focus', () => { ... })
-navigation.addListener('beforeRemove', (e) => { e.preventDefault() })
-navigation.getState()
-navigation.dispatch(action)
-```
-
-Access parent navigators: `useNavigation('/(tabs)')`.
-
-## useScrollGroup
-
-Register a scroll group in a layout. Child routes preserve scroll position when navigating between them:
-
-```tsx
-// app/dashboard/_layout.tsx
-export default function Layout() {
-  useScrollGroup()  // all /dashboard/* routes share scroll position
-  return <Slot />
-}
-```
-
-Web only — no-op on native.
+`useLoader(loader)` belongs with its route loader; use `useMatches` to read other matched loaders. Layout data is `unknown` until narrowed. `useLoaderState()` without an argument shares the current route's refetch and state. Imperative `refetchLoader(path)` works outside React. See the installed `one-loaders` skill for query keys and cache behavior.

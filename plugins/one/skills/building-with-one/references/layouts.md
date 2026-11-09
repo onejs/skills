@@ -1,33 +1,8 @@
-# Layouts
+# Layouts, tabs, headers and toolbars
 
-Official docs: [Layouts](https://onestack.dev/docs/routing-layouts), [withLayoutContext](https://onestack.dev/docs/exports-withLayoutContext)
+[Layouts](https://onestack.dev/docs/routing-layouts), [Stack](https://onestack.dev/docs/components-Stack), [Tabs](https://onestack.dev/docs/components-Tabs), [toolbar](https://onestack.dev/native/toolbar).
 
-Layout files named `_layout.tsx` wrap child routes. They nest when placed in subdirectories.
-
-## Layout Types
-
-A layout must render exactly one of these:
-
-| Component | Import | Use Case |
-|-----------|--------|----------|
-| `<Slot />` | `'one'` | No navigation frame, just renders the child |
-| `<Stack />` | `'one'` | Native stack navigation (push/pop) |
-| `<Tabs />` | `'one'` | Bottom tab navigation |
-| `<Drawer />` | `'one/drawer'` | Slide-out drawer navigation |
-| `<NativeTabs />` | `'one'` or `'one/native-tabs'` | Platform-native tab bars |
-
-## Basic Layout
-
-```tsx
-// app/_layout.tsx
-import { Slot } from 'one'
-
-export default function RootLayout() {
-  return <Slot />
-}
-```
-
-## Stack Layout
+Render `Slot` for the child without navigation chrome, `Stack` for file-route push/pop, or `Tabs` for file-route tabs. `Drawer` comes from `one/drawer` and needs its documented navigation and gesture dependencies. Providers and ordinary layout views can wrap navigators.
 
 ```tsx
 import { Stack } from 'one'
@@ -37,246 +12,49 @@ export default function Layout() {
     <Stack>
       <Stack.Screen name="index" options={{ title: 'Home' }} />
       <Stack.Screen name="settings" options={{ title: 'Settings' }} />
-      <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-      <Stack.Screen
-        name="sheet"
-        options={{
-          presentation: 'formSheet',
-          gestureDirection: 'vertical',
-          animation: 'slide_from_bottom',
-          headerShown: false,
-        }}
-      />
     </Stack>
   )
 }
 ```
 
-The `name` must match the filename (without extension, but including groups). Options pass directly to React Navigation NativeStack.
+Names match route files. `Stack.Screen` in page content can set options from page state. `Stack.Header` supports declarative title, back button, search bar, left and right content; use the installed Stack types for its supported props.
 
-### Header Composition API
+## Routed tabs
 
-For declarative header configuration, use `Stack.Header` and its children inside `Stack.Screen`:
+Current `Tabs` uses React Navigation bottom tabs on native and a headless implementation on web. Use its native options directly:
 
 ```tsx
-<Stack>
-  <Stack.Screen name="index">
-    <Stack.Header blurEffect="regular">
-      <Stack.Header.Title large>Articles</Stack.Header.Title>
-      <Stack.Header.SearchBar placeholder="Search..." placement="stacked" />
-    </Stack.Header>
-  </Stack.Screen>
-
-  <Stack.Screen name="[id]">
-    <Stack.Header>
-      <Stack.Header.Title>Post</Stack.Header.Title>
-      <Stack.Header.BackButton displayMode="minimal" />
-      <Stack.Header.Right asChild>
-        <ShareButton />
-      </Stack.Header.Right>
-    </Stack.Header>
-  </Stack.Screen>
-</Stack>
+<Tabs.Screen name="feed" options={{
+  title: 'Feed',
+  tabBarIcon: ({ focused }) => ({
+    type: 'sfSymbol', name: focused ? 'house.fill' : 'house',
+  }),
+}} />
 ```
 
-Set a default header for all screens:
+Native layouts reject the web-only `href` screen option. Move screens that must not be tabs to a parent Stack. A custom web tab target belongs in `_layout.web.tsx`. Web `Tabs` renders only the focused screen by default; a custom child can call `useTabs()` to render `screens` links and `focused.element`. See the [headless web guide](https://onestack.dev/docs/guides-headless-web).
+
+Use `tabBarSelectionEnabled: false` with a `tabPress` listener for a native action tab. Use the installed navigator options for `tabBarSystemItem` and `tabBarMinimizeBehavior`. Do not add the retired `NativeTabs` imports or `@bottom-tabs` dependencies from older One examples.
+
+## Routed iOS toolbars
+
+`Stack.Toolbar placement="left"` or `"right"` declares native header items. Nest `Button`, `Menu`, `MenuAction`, and fixed-width `Spacer` descriptors. A bottom toolbar (the default placement) must mount in screen content, not layout config:
 
 ```tsx
-<Stack>
-  <Stack.Header blurEffect="regular">
-    <Stack.Header.BackButton displayMode="minimal" />
-  </Stack.Header>
-  <Stack.Screen name="index" options={{ title: 'Home' }} />
-</Stack>
-```
-
-See `components.md` for full Stack.Header sub-component props.
-
-### Configuring Screens from Inside Pages
-
-You can render `Stack.Screen` inside individual pages to access page-level data:
-
-```tsx
-// app/blog/[slug].tsx
 import { Stack } from 'one'
 
-export default function BlogPost() {
-  const { post } = useLoader(loader)
-
+function Actions({ add }: { add: () => void }) {
   return (
-    <>
-      <Stack.Screen options={{ title: post.title }} />
-      <Text>{post.content}</Text>
-    </>
+    <Stack.Toolbar>
+      <Stack.Toolbar.Button icon="plus" onPress={add}>Add</Stack.Toolbar.Button>
+      <Stack.Toolbar.Spacer />
+    </Stack.Toolbar>
   )
 }
 ```
 
-The tradeoff: layout-level config applies before stack animation; page-level config can use page data.
+The bottom toolbar renders nothing off iOS. `Badge` belongs only to header toolbars. `One.iOS.ToolbarHost` and `BarButtonItem` expose lower-level UIKit items.
 
-## Tab Layout
+SwiftUI `One.iOS.Toolbar` is a separate API: put its `ToolbarItem`, `ToolbarItemGroup`, and `ToolbarSpacer` inside a `One.iOS.NavigationStack` or `TabView`. Split-view column wrappers use `Toolbar.Content`. Read [native UI](native-ui.md) before mixing native navigation containers.
 
-```tsx
-import { Tabs } from 'one'
-
-export default function TabLayout() {
-  return (
-    <Tabs>
-      <Tabs.Screen name="home" options={{ title: 'Home', href: '/home' }} />
-      <Tabs.Screen name="profile" options={{ title: 'Profile', href: '/profile' }} />
-    </Tabs>
-  )
-}
-```
-
-## NativeTabs Layout
-
-Platform-native tab bars (iOS UITabBarController, Android Material BottomNavigation):
-
-```tsx
-import { NativeTabs } from 'one'
-
-export default function Layout() {
-  return (
-    <NativeTabs>
-      <NativeTabs.Screen
-        name="feed"
-        options={{ title: 'Feed', tabBarIcon: () => ({ sfSymbol: 'newspaper' }) }}
-      />
-      <NativeTabs.Screen
-        name="profile"
-        options={{ title: 'Profile', tabBarIcon: () => ({ sfSymbol: 'person' }) }}
-      />
-    </NativeTabs>
-  )
-}
-```
-
-Requires: `@bottom-tabs/react-navigation` and `react-native-bottom-tabs`.
-
-## Drawer Layout
-
-```tsx
-import { GestureHandlerRootView } from 'react-native-gesture-handler'
-import { Drawer } from 'one/drawer'
-
-export default function Layout() {
-  return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <Drawer>
-        <Drawer.Screen name="index" options={{ drawerLabel: 'Home' }} />
-        <Drawer.Screen name="settings" options={{ drawerLabel: 'Settings' }} />
-      </Drawer>
-    </GestureHandlerRootView>
-  )
-}
-```
-
-Requires: `@react-navigation/drawer`, `react-native-gesture-handler`, `react-native-reanimated`.
-
-## Protected Routes
-
-Use `<Protected>` inside any navigator to conditionally show/hide routes:
-
-```tsx
-import { Stack, Protected } from 'one'
-
-export default function Layout() {
-  const { session } = useAuth()
-
-  return (
-    <Stack>
-      <Stack.Screen name="login" />
-      <Protected guard={!!session}>
-        <Stack.Screen name="dashboard" />
-        <Protected guard={session?.role === 'admin'}>
-          <Stack.Screen name="admin" />
-        </Protected>
-      </Protected>
-    </Stack>
-  )
-}
-```
-
-When `guard` is false, routes are completely removed from the navigator — they won't appear in tab bars, and navigation attempts are blocked.
-
-## Nested Layouts
-
-Layouts nest automatically based on directory structure:
-
-```
-app/
-  _layout.tsx              Root (Stack)
-  index.tsx                /
-  (tabs)/
-    _layout.tsx            Tab layout (Tabs)
-    home.tsx               /home
-    profile.tsx            /profile
-  settings/
-    _layout.tsx            Settings layout (Stack)
-    index.tsx              /settings
-    account.tsx            /settings/account
-```
-
-## Layout Loaders
-
-Layouts can export their own loader:
-
-```tsx
-// app/_layout.tsx
-import { Stack, useLoader } from 'one'
-
-export async function loader() {
-  const user = await getUser()
-  return { user }
-}
-
-export default function RootLayout() {
-  const { user } = useLoader(loader)
-
-  return (
-    <UserContext.Provider value={user}>
-      <Stack />
-    </UserContext.Provider>
-  )
-}
-```
-
-## Accessing Child Page Data from Layout
-
-Use `useMatches()` to read loader data from any route:
-
-```tsx
-import { useMatches, Slot } from 'one'
-
-export default function Layout() {
-  const matches = useMatches()
-  const pageData = matches[matches.length - 1]?.loaderData
-  return <Slot />
-}
-```
-
-## Layout Render Modes
-
-Layouts support render mode suffixes:
-
-```
-app/
-  _layout+ssg.tsx          Static shell (fast initial load)
-  dashboard+spa/
-    index.tsx              SPA content inside static shell
-```
-
-A `_layout+ssg.tsx` wrapping SPA pages gives a fast static shell with client-rendered content.
-
-## Custom Layouts with withLayoutContext
-
-Make any React Navigation navigator work as a One layout:
-
-```tsx
-import { createNativeBottomTabNavigator } from '@bottom-tabs/react-navigation'
-import { withLayoutContext } from 'one'
-
-const Navigator = createNativeBottomTabNavigator().Navigator
-export const CustomTabs = withLayoutContext(Navigator)
-```
+Layouts can export loaders and read data with `useLoader`; `useMatches()` reads matched layout/page loader data. Layout and page loaders run in parallel, so a parent loader is not a sequential auth gate for child loaders.

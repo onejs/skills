@@ -1,71 +1,20 @@
-# Incremental Static Regeneration (ISR)
+# Public SSR caching
 
-Official docs: [ISR Guide](https://onestack.dev/docs/guides-isr)
+[ISR guide](https://onestack.dev/docs/guides-isr).
 
-Cache SSR pages at the CDN edge for static-like performance.
-
-## How It Works
-
-1. First visitor → SSR renders → CDN caches
-2. Subsequent visitors → cached version instantly
-3. Cache expires → next visitor gets stale while CDN regenerates in background
-4. New version replaces cached one
-
-No one waits for rendering — CDN always serves something.
-
-## Setup
-
-Use `setResponseHeaders` in SSR loaders:
+One's ISR pattern uses SSR with CDN response caching, rather than a separate regeneration API:
 
 ```tsx
-// app/blog/[slug]+ssr.tsx
-import { setResponseHeaders, useLoader } from 'one'
+import { setResponseHeaders } from 'one'
 
-export async function loader({ params }) {
+export async function loader() {
   await setResponseHeaders((headers) => {
-    headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400')
+    headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300')
   })
-  return { post: await fetchPost(params.slug) }
+  return { posts: await getPublicPosts() }
 }
 ```
 
-## Cache Header Patterns
+A cold or expired cache can still wait for rendering. Background revalidation depends on the CDN and its configuration. Verify the target provider's current behavior before relying on `stale-while-revalidate`; do not hard-code an old provider support table into the app.
 
-| Pattern | Use Case |
-|---------|----------|
-| `s-maxage=3600, stale-while-revalidate=86400` | Standard (1h cache, 1d stale) |
-| `s-maxage=86400, stale-while-revalidate=604800` | Rarely changes (1d cache, 1w stale) |
-| `s-maxage=300, stale-while-revalidate=3600` | Frequently updated (5m cache, 1h stale) |
-| `private, no-store` | User-specific, never cache |
-
-## Conditional Caching
-
-```tsx
-export async function loader({ request }) {
-  const isAuthenticated = request?.headers.get('Cookie')?.includes('session=')
-
-  await setResponseHeaders((headers) => {
-    headers.set('Cache-Control', isAuthenticated
-      ? 'private, no-store'
-      : 'public, s-maxage=3600, stale-while-revalidate=86400'
-    )
-  })
-}
-```
-
-## CDN Support
-
-| Platform | `stale-while-revalidate` |
-|----------|--------------------------|
-| Vercel | Full |
-| CloudFront | Full |
-| Fastly | Full |
-| Cloudflare | No — use `s-maxage` only |
-
-## When to Use
-
-| Strategy | Best For |
-|----------|----------|
-| SSG | Content known at build time |
-| ISR (SSR + cache) | Content that changes occasionally, many pages |
-| SSR (no cache) | User-specific or real-time content |
+Use `private, no-store` for user-specific content. Do not decide authentication from the mere presence of a cookie or cache personalized output publicly. SSG is for content known at build time. In-process `loaderCache` coalescing is separate, with TTL in milliseconds; CDN cache headers use seconds.

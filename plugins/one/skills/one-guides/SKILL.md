@@ -1,29 +1,29 @@
 ---
 name: one-guides
-description: Guides and recipes for One framework. Covers authentication, images, CSS optimization, dark mode, Tamagui, MDX, OpenGraph images, ISR, skew protection, native iOS builds, EAS, CRA migration, and common issues.
-version: 1.0.0
+description: Apply One recipes for authentication, images, CSS, color scheme, Tamagui, MDX, social metadata, caching, native builds, OTA, and troubleshooting.
 license: MIT
+metadata:
+  version: "2.0.0"
 ---
 
-# One Framework Guides
+# One recipes
 
-Official docs: [Guides Index](https://onestack.dev/docs/guides)
+Use the app's installed package versions and existing integrations. These references explain the One-specific boundary; read only the one needed for the task.
 
-Recipes and patterns for common tasks when building with One.
+| Task | Reference |
+| --- | --- |
+| Session guards and server authorization | [authentication](references/authentication.md) |
+| Image dimensions and blur metadata | [images](references/images.md) |
+| Critical CSS and layout CSS | [CSS](references/css.md) |
+| SSR-safe light/dark/system scheme | [dark mode](references/dark-mode.md) |
+| Tamagui config and Vite integration | [Tamagui](references/tamagui.md) |
+| File-driven MDX routes | [MDX](references/mdx.md) |
+| Dynamic social sharing images | [Open Graph](references/open-graph.md) |
+| Public SSR CDN caching | [ISR](references/isr.md) |
+| Stale web chunks after deploy | [skew protection](references/skew-protection.md) |
+| Native manifest, binaries and OTA | [native builds](references/native-builds.md) |
+| SSR imports and native networking | [common issues](references/common-issues.md) |
 
-## References
+For SwiftUI/Compose controls, native tabs/toolbars, style modifiers and glass, use the installed `building-with-one` skill's native references. Do not add Expo packages or replace native controls before checking One's current APIs.
 
-```
-references/
-  authentication.md       Session context, Protected routes, middleware auth, loader redirects, OAuth
-  images.md               ?imagedata imports, blur placeholders, sharp, MDX frontmatter integration
-  css.md                  .inline.css, layout CSS ordering, inlineLayoutCSS, CSS loading optimization
-  dark-mode.md            @vxrn/color-scheme, Tamagui SSR-safe dark mode, MetaTheme
-  tamagui.md              Tamagui setup with One, SSR-safe styling, Vite plugin, CSS extraction
-  mdx.md                  @vxrn/mdx setup, syntax highlighting, SSG blog with MDX
-  open-graph.md           Dynamic OG images with @vercel/og, custom fonts, caching
-  isr.md                  Incremental Static Regeneration, cache headers, CDN patterns
-  skew-protection.md      Handling stale bundles after deploys, proactive version polling
-  native-builds.md        iOS prebuild, Xcode, EAS, Android, production builds
-  common-issues.md        Troubleshooting SSR errors, React Native package issues, fetch on native
-```
+Official [guides](https://onestack.dev/docs/guides) and [native overview](https://onestack.dev/native/overview).
