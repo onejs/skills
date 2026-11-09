@@ -1,71 +1,11 @@
-# Dark Mode
+# SSR-safe color scheme
 
-Official docs: [Dark Mode](https://onestack.dev/docs/guides-dark-mode)
+[Dark mode](https://onestack.dev/docs/guides-dark-mode).
 
-SSR-safe dark mode with `@vxrn/color-scheme` and Tamagui.
+Current One re-exports `SchemeProvider`, `MetaTheme`, `useUserScheme`, and the other `@vxrn/color-scheme` helpers from `one`. Keep an existing direct package import if the app's installed version needs it.
 
-## Setup
+Wrap theme consumers in `SchemeProvider`. It applies the stored or system scheme class before first paint. `MetaTheme darkColor="#050505" lightColor="#ffffff"` sets the browser theme color before hydration. `defaultScheme`, `forceScheme`, and `getClassName` configure the provider.
 
-```bash
-npm add tamagui @tamagui/config @vxrn/color-scheme
-```
+`useUserScheme()` returns `setting` (`system`, `light`, `dark`), resolved `value` (`light`, `dark`), and `set`. Read the hook in a child of the provider and use `value` as the Tamagui provider's `defaultTheme`. Outside React use `getUserScheme`, `setUserScheme`, and `onUserSchemeChange`.
 
-```tsx
-// app/_layout.tsx
-import { Slot } from 'one'
-import { TamaguiProvider, Theme } from '@tamagui/core'
-import { config } from '@tamagui/config/v3'
-import { MetaTheme, SchemeProvider, useUserScheme } from '@vxrn/color-scheme'
-
-export default function Layout() {
-  return (
-    <SchemeProvider>
-      <MetaTheme
-        darkColor={config.themes.dark.color1.val}
-        lightColor={config.themes.light.color1.val}
-      />
-      <TamaguiRoot>
-        <Theme name="yellow">
-          <Slot />
-        </Theme>
-      </TamaguiRoot>
-    </SchemeProvider>
-  )
-}
-
-const TamaguiRoot = ({ children }) => {
-  const userScheme = useUserScheme()
-  return (
-    <TamaguiProvider disableInjectCSS config={config} defaultTheme={userScheme.value}>
-      {children}
-    </TamaguiProvider>
-  )
-}
-```
-
-## Toggle Button
-
-```tsx
-import { useUserScheme } from '@vxrn/color-scheme'
-
-const schemeSettings = ['light', 'dark', 'system'] as const
-
-function ThemeToggle() {
-  const userScheme = useUserScheme()
-  return (
-    <Button onPress={() => {
-      const next = schemeSettings[(schemeSettings.indexOf(userScheme.setting) + 1) % 3]
-      userScheme.set(next)
-    }}>
-      {userScheme.setting}
-    </Button>
-  )
-}
-```
-
-## Key Points
-
-- `SchemeProvider` manages light/dark/system preference
-- `MetaTheme` sets the `theme-color` meta tag SSR-safely
-- `useUserScheme()` returns `{ value, setting, set }` — value is resolved scheme, setting is user choice
-- No flicker on SSR — works with JS disabled
+Use the app's existing Tamagui config. `disableInjectCSS` requires that the extracted stylesheet is already imported. Avoid a client-only effect that changes the initial theme after the server has painted it. SwiftUI environment appearance uses its separate `swiftStyle.colorScheme` contract.

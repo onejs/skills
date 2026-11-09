@@ -1,249 +1,42 @@
 ---
 name: one-api-routes
-description: Create API routes in One framework. Use when building HTTP endpoints, webhooks, REST APIs, or server-side logic with +api.ts files.
-version: 1.0.0
+description: Create One HTTP endpoints and webhooks with +api route files, typed params, explicit methods, middleware, and Cloudflare worker context.
 license: MIT
+metadata:
+  version: "2.0.0"
 ---
 
-# API Routes
+# API routes
 
-Official docs: [Routing](https://onestack.dev/docs/routing)
-
-API routes are server-only HTTP endpoints. Name files with the `+api.ts` suffix.
-
-## When to Use
-
-- REST API endpoints
-- Webhook handlers
-- Form submissions
-- Server-side operations (database writes, external API calls)
-- Authentication endpoints
-
-## When NOT to Use
-
-- Fetching data for a page — use loaders instead
-- Client-side logic — use regular components
-- Static data — use SSG with loaders
-
-## File Structure
-
-```
-app/
-  api/
-    route+api.ts              GET /api
-    users/
-      route+api.ts            GET/POST /api/users
-      [id]+api.ts             GET/PUT/DELETE /api/users/:id
-    webhooks/
-      stripe+api.ts           POST /api/webhooks/stripe
-```
-
-## Basic Usage
-
-Export named functions for HTTP methods:
-
-```ts
-// app/api/health+api.ts
-export function GET() {
-  return Response.json({ status: 'ok' })
-}
-```
-
-## HTTP Methods
-
-```ts
-// app/api/users/route+api.ts
-
-export async function GET(request: Request) {
-  const users = await db.users.findMany()
-  return Response.json(users)
-}
-
-export async function POST(request: Request) {
-  const body = await request.json()
-  const user = await db.users.create(body)
-  return Response.json(user, { status: 201 })
-}
-```
+[API route reference](https://onestack.dev/docs/routing-api-routes). Export HTTP method handlers from `+api.ts` files (or `.tsx` when JSX is needed). They execute on the server and return Web API Responses.
 
 ```ts
 // app/api/users/[id]+api.ts
-
-export async function GET(request: Request, { params }: { params: { id: string } }) {
-  const user = await db.users.find(params.id)
-  if (!user) {
-    return Response.json({ error: 'Not found' }, { status: 404 })
-  }
-  return Response.json(user)
-}
-
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
-  const body = await request.json()
-  const user = await db.users.update(params.id, body)
-  return Response.json(user)
-}
-
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
-  await db.users.delete(params.id)
-  return new Response(null, { status: 204 })
-}
-```
-
-## Default Handler
-
-A default export catches all HTTP methods:
-
-```ts
-// app/api/proxy+api.ts
-export default async function handler(request: Request) {
-  // handles GET, POST, PUT, DELETE, etc.
-  return fetch(`https://upstream.api${new URL(request.url).pathname}`, {
-    method: request.method,
-    headers: request.headers,
-    body: request.body,
-  })
-}
-```
-
-## Request
-
-Standard Web API `Request` object:
-
-```ts
-export async function POST(request: Request) {
-  // JSON body
-  const json = await request.json()
-
-  // Form data
-  const form = await request.formData()
-
-  // Raw text
-  const text = await request.text()
-
-  // Query params
-  const url = new URL(request.url)
-  const q = url.searchParams.get('q')
-
-  // Headers
-  const auth = request.headers.get('Authorization')
-}
-```
-
-## Response
-
-Standard Web API `Response` object:
-
-```ts
-// JSON
-return Response.json({ data: 'value' })
-
-// with status
-return Response.json({ error: 'bad request' }, { status: 400 })
-
-// with headers
-return new Response(JSON.stringify(data), {
-  status: 200,
-  headers: {
-    'Content-Type': 'application/json',
-    'Cache-Control': 'public, max-age=3600',
-  },
-})
-
-// redirect
-return Response.redirect('/login', 302)
-
-// no content
-return new Response(null, { status: 204 })
-```
-
-## Typed Routes
-
-Use `Endpoint` type for typed params:
-
-```ts
-import type { Endpoint } from 'one'
-
-export type MyEndpoint = Endpoint<'/api/users/[id]'>
-
-export async function GET(
-  request: Request,
-  { params }: { params: MyEndpoint['params'] }
-) {
-  // params.id is typed
-}
-```
-
-Or use `createAPIRoute`:
-
-```ts
 import { createAPIRoute } from 'one'
 
-export const GET = createAPIRoute<'/api/users/[id]'>(
-  async (request, { params }) => {
-    return Response.json({ id: params.id })
-  }
-)
+export const GET = createAPIRoute<'/api/users/[id]'>((request, { params }) => {
+  return Response.json({ id: params.id })
+})
 ```
 
-## Common Patterns
+Use `app/api/index+api.ts` for `/api`, `app/api/users+api.ts` for `/api/users`, and `[...path]+api.ts` for catch-all paths. A folder ending in `+api` passes the API mode to unsuffixed children. `route+api.ts` is not a special directory-index convention.
 
-### Authentication middleware
+## Dispatch and input
 
-```ts
-async function requireAuth(request: Request) {
-  const token = request.headers.get('Authorization')?.replace('Bearer ', '')
-  if (!token) {
-    throw Response.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-  return verifyToken(token)
-}
+Named exports handle GET, POST, PUT, PATCH, DELETE, HEAD, and OPTIONS. A default handler catches methods without named exports. Without either, One returns 405 with an Allow header. HEAD and OPTIONS need explicit handlers or a default/middleware response; do not assume automatic GET or CORS behavior.
 
-export async function GET(request: Request) {
-  const user = await requireAuth(request)
-  return Response.json({ user })
-}
-```
+Read a request body once, choosing `json()`, `formData()`, or `text()`; validate it at this boundary. Webhooks that verify a signature often need the original body. Authorize access before returning private data or mutating records. Return a deliberate error Response for expected failures; do not expose arbitrary server exception messages.
 
-### Error handling
+The second argument contains `params`; dynamic single segments are strings and rest segments are arrays. `Endpoint` is a nongeneric simple handler type; use `createAPIRoute<'/path/[id]'>` for typed params.
 
-```ts
-export async function POST(request: Request) {
-  try {
-    const body = await request.json()
-    const result = await processData(body)
-    return Response.json(result)
-  } catch (error) {
-    return Response.json(
-      { error: error instanceof Error ? error.message : 'Internal error' },
-      { status: 500 }
-    )
-  }
-}
-```
+## Responses and middleware
 
-### Streaming response
+Use `Response.json(data, { status })`, `new Response(body, options)`, or One's `redirect('/path')`. Standard `Response.redirect` needs an absolute URL, such as `new URL('/login', request.url)`. Do not export React page components from endpoints.
 
-```ts
-export async function GET() {
-  const stream = new ReadableStream({
-    async start(controller) {
-      for await (const chunk of generateChunks()) {
-        controller.enqueue(new TextEncoder().encode(chunk))
-      }
-      controller.close()
-    },
-  })
+Place `_middleware.ts` in the relevant route directory for auth or CORS. Dev and production dispatch the same method handlers. When overriding Vite `server.cors`, preserve `preflightContinue: true` so OPTIONS reaches your handler.
 
-  return new Response(stream, {
-    headers: { 'Content-Type': 'text/event-stream' },
-  })
-}
-```
+## Cloudflare
 
-## Rules
+`createAPIRoute` handlers receive `worker` on the second argument in Workers: `worker.env` contains configured bindings and `worker.executionCtx.waitUntil(promise)` retains background work. `worker` is undefined in Node/dev; only use the runtime's contract. See the deployment skill for generated Wrangler configuration.
 
-1. API route files must end with `+api.ts` (or `.js`)
-2. API routes are server-only — they never ship to the client bundle
-3. Use standard Web API Request/Response — no framework-specific wrappers
-4. Dynamic route params use the same `[param]` syntax as page routes
-5. Do not export React components from API route files
+Native clients need an absolute endpoint URL, using the deployed server origin. Deploy an actual server/worker for API routes; a static-only host cannot execute them.

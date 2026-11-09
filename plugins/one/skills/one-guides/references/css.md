@@ -1,39 +1,9 @@
-# CSS Loading
+# CSS
 
-Official docs: [Configuration](https://onestack.dev/docs/configuration), [Features](https://onestack.dev/docs/features)
+[CSS guide](https://onestack.dev/docs/guides-css).
 
-## Automatic Optimization
+One loads layout CSS before scripts and page CSS after scripts. Keep critical layout imports in the layout rather than moving every stylesheet into the root.
 
-One separates CSS into two categories in production:
+A `.inline.css` import inlines that file into HTML for first paint. `one({ web: { inlineLayoutCSS: true } })` inlines all CSS. Use one deliberately based on the output size and first-paint need. Inlining a large stylesheet trades a request for a larger HTML response.
 
-- **Layout CSS** (from `_layout` files) — loaded before JavaScript to prevent FOUC
-- **Page CSS** (from pages) — loaded after scripts
-
-No configuration needed.
-
-## Inline CSS (`.inline.css`)
-
-For CSS that must render before first paint, use `.inline.css`:
-
-```tsx
-// app/_layout.tsx
-import './critical-styles.inline.css'  // inlined as <style> in HTML
-import './non-critical.css'             // loaded via <link> tag
-```
-
-Use for: layout structure, above-the-fold colors/fonts, small files (<10KB).
-Don't use for: large files, component CSS, post-interaction styles.
-
-## `inlineLayoutCSS` Config
-
-Inlines ALL CSS as `<style>` tags:
-
-```ts
-one({ web: { inlineLayoutCSS: true } })
-```
-
-| Approach | Effect |
-|----------|--------|
-| Default | Layout CSS before scripts, page CSS after |
-| `.inline.css` | Only marked files inlined |
-| `inlineLayoutCSS: true` | Everything inlined |
+Put shared styles outside the route directory and import them from the layout. Native platform controls use `swiftStyle` or `composeStyle`, not web CSS. Tamagui's extracted stylesheet needs the matching provider configuration; see [Tamagui](tamagui.md).

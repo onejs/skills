@@ -1,167 +1,39 @@
 # Configuration
 
-Official docs: [Configuration](https://onestack.dev/docs/configuration)
-
-All One configuration goes through the Vite plugin in `vite.config.ts`:
+[Configuration](https://onestack.dev/docs/configuration), [environment](https://onestack.dev/docs/environment), [native setup](https://onestack.dev/docs/native-setup).
 
 ```ts
 import { one } from 'one/vite'
+import type { UserConfig } from 'vite'
 
 export default {
-  plugins: [
-    one({
-      // options here
-    }),
-  ],
-}
+  plugins: [one({
+    web: { defaultRenderMode: 'ssg', deploy: 'node' },
+    native: {
+      app: {
+        name: 'MyApp',
+        ios: { bundleId: 'com.example.myapp' },
+        android: { applicationId: 'com.example.myapp' },
+      },
+    },
+  })],
+} satisfies UserConfig
 ```
 
-## Web Options
+Native dev defaults to `bundler: 'vite'`, using Rolldown and OXC. Set `bundler: 'metro'` only for a dependency that needs it. Production native JS bundling always uses Rolldown. `native.key` must match the native AppRegistry container. `native.app` owns generated app identifiers, icons, splash, permissions, capabilities and supported project patches. Run prebuild after changing native configuration; changing a native manifest cannot hot reload into an existing binary.
 
-```ts
-one({
-  web: {
-    // render mode for pages without a suffix (default: 'ssg')
-    defaultRenderMode: 'ssg' | 'ssr' | 'spa',
+`react-native.config.cjs` should export `require('one/react-native-config')` for One's community native setup. Expo prebuild is an opt-in migration path, not a prerequisite.
 
-    // collapse hydration error logs in dev
-    looseHydration: true,
+Useful options to look up rather than invent:
 
-    // server-level redirects
-    redirects: [
-      { source: '/old', destination: '/new', permanent: true },
-    ],
+- `web.linkPrefetch`, `inlineLayoutCSS`, `sitemap`, `skewProtection`.
+- `setupFile`, per-environment `alias`, `router.root`, `router.ignoredRouteFiles`.
+- `react.compiler`, `ssr.autoDepsOptimization`, `ssr.dedupeSymlinkedModules`.
+- `build.workers`, `build.concurrency`, `build.securityScan`.
+- `environmentGuards` for `server-only` / `client-only` imports.
 
-    // deployment target (default: 'node')
-    deploy: 'node' | 'vercel' | 'cloudflare',
+Keep server imports confined to server exports. Only variables with `VITE_`, `EXPO_PUBLIC_`, or `ONE_PUBLIC_` prefixes are intentionally client exposed; never put secrets under those prefixes. Add `/// <reference types="one/env" />` to a declaration file for One's preset environment types.
 
-    // link prefetching strategy (default: 'intent')
-    linkPrefetch: 'intent' | 'viewport' | 'hover' | false,
+`process.env.EXPO_OS` is One's build-time platform value, and `import.meta.env.VITE_ENVIRONMENT` identifies `client`, `ssr`, `ios`, or `android`. Native requests need an absolute server URL; set `ONE_SERVER_URL` for production loader/API access. A physical device cannot use your computer's localhost.
 
-    // inline CSS to reduce requests
-    inlineLayoutCSS: true,
-
-    // auto-generate sitemap.xml
-    sitemap: true,
-
-    // experimental script loading strategy
-    experimental_scriptLoading: 'defer-non-critical' | 'after-lcp',
-  },
-})
-```
-
-## Native Options
-
-```ts
-one({
-  native: {
-    // bundler (default: 'metro', recommended)
-    bundler: 'metro' | 'vite',
-
-    // AppRegistry component name
-    key: 'MyApp',
-
-    // enable react-native-css-interop
-    css: true,
-  },
-})
-```
-
-## Global Options
-
-```ts
-one({
-  // run before app starts (supports per-environment)
-  setupFile: './setup.ts',
-  // or: setupFile: { client: './setup.client.ts', ssr: './setup.server.ts' }
-
-  // module aliases (supports per-environment)
-  alias: {
-    '@/': './src/',
-  },
-
-  // node module compatibility patches
-  patches: {
-    'some-package': true,
-  },
-
-  // route file exclusions
-  router: {
-    ignoredRouteFiles: ['**/*.test.tsx', '**/_utils/**'],
-  },
-
-  // react compiler
-  react: {
-    compiler: true, // or platform/regex/function
-  },
-
-  // auto-scan entry points
-  optimization: {
-    autoEntriesScanning: 'flat' | true | false,
-  },
-
-  // built-in devtools
-  devtools: true, // enables all, or configure individually
-
-  // secret detection in builds
-  build: {
-    securityScan: 'warn' | 'error' | false,
-  },
-
-  // auto-optimize problematic deps for SSR
-  ssr: {
-    autoDepsOptimization: true,
-  },
-
-  // enforce 'server-only' / 'client-only' guards
-  environmentGuards: true,
-})
-```
-
-## Environment Variables
-
-One loads `.env` files and exposes variables on `process.env` and `import.meta.env`.
-
-**Client-safe prefixes** (exposed to browser/native bundles):
-- `VITE_*`
-- `EXPO_PUBLIC_*`
-- `ONE_PUBLIC_*`
-
-Variables without these prefixes are server-only.
-
-**Built-in variables:**
-
-| Variable | Value |
-|----------|-------|
-| `ONE_CACHE_KEY` | Per-build random key |
-| `ONE_APP_NAME` | From config |
-| `ONE_SERVER_URL` | Auto in dev, set manually in prod |
-| `ONE_DEFAULT_RENDER_MODE` | From config |
-| `VITE_ENVIRONMENT` | 'client', 'ssr', 'ios', 'android' |
-| `VITE_NATIVE` | '1' on native, '' on web |
-| `EXPO_OS` | 'web', 'ios', 'android' |
-
-**Type support:**
-
-Add to a `.d.ts` file:
-
-```ts
-/// <reference types="one/env" />
-```
-
-## Devtools
-
-Access devtools in development:
-
-| Shortcut | Panel |
-|----------|-------|
-| `Alt+Space` | Spotlight menu |
-| `Alt+S` | SEO Preview |
-| `Alt+R` | Route Debug |
-| `Alt+L` | Loader Timing |
-| `Alt+P` | Route Preload |
-| `Alt+E` | Error Panel |
-
-## Environments
-
-One supports four environments: `client`, `ssr`, `ios`, `android`. Use platform extensions (`.web.tsx`, `.native.tsx`, `.ios.tsx`, `.android.tsx`) for platform-specific code. The bundler resolves the correct file automatically.
+For dev/serve ports: `ONE_FORCE_PORT` wins over `--port`, which wins over `ONE_PORT`, then the command default. Use the CLI's `--host` or serve options as appropriate; do not assume generic `PORT`/`HOST` variables configure One.
